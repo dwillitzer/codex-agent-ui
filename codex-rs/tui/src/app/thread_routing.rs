@@ -1091,17 +1091,19 @@ impl App {
             .collect();
 
         let mut pending_thread_ids = HashSet::new();
+        let mut all_pending_thread_ids = HashSet::new();
         for (thread_id, store) in channels {
-            if Some(thread_id) == self.active_thread_id || Some(thread_id) == side_parent_thread_id
-            {
-                continue;
-            }
-
             let pending = {
                 let store = store.lock().await;
                 store.attachment_prefix.is_none() && store.has_pending_thread_approvals()
             };
             if pending {
+                all_pending_thread_ids.insert(thread_id);
+                if Some(thread_id) == self.active_thread_id
+                    || Some(thread_id) == side_parent_thread_id
+                {
+                    continue;
+                }
                 pending_thread_ids.insert(thread_id);
                 // Approval requests can arrive before the thread's metadata.
                 if self.agent_navigation.get(&thread_id).is_none() {
@@ -1113,9 +1115,14 @@ impl App {
             }
         }
 
+        let panel_changed = self.agent_navigation.panel_pending_approvals != all_pending_thread_ids;
+        self.agent_navigation.panel_pending_approvals = all_pending_thread_ids;
+
         if self.agent_navigation.pending_approvals != pending_thread_ids {
             self.agent_navigation.pending_approvals = pending_thread_ids;
             self.refresh_agent_picker();
+        } else if panel_changed {
+            self.sync_subagent_panel();
         }
     }
 

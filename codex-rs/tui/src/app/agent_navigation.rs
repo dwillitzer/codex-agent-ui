@@ -43,6 +43,9 @@ use uuid::Uuid;
 pub(crate) struct AgentNavigationState {
     pub(super) panel_details: HashMap<ThreadId, super::agent_panel::AgentPanelDetails>,
     pub(super) panel_collapsed: bool,
+    pub(super) panel_filter: crate::bottom_pane::subagent_panel::AgentStatusFilter,
+    pub(super) panel_filter_root: Option<ThreadId>,
+    pub(super) panel_pending_approvals: HashSet<ThreadId>,
     pub(super) panel_discovery_root: Option<ThreadId>,
     pub(super) panel_bookmarks: HashMap<ThreadId, super::agent_panel::AgentPanelBookmark>,
     /// Latest picker metadata for each tracked thread id.
@@ -272,6 +275,9 @@ impl AgentNavigationState {
     /// to a pristine single-session state.
     pub(crate) fn clear(&mut self) {
         self.panel_details.clear();
+        self.panel_filter = Default::default();
+        self.panel_filter_root = None;
+        self.panel_pending_approvals.clear();
         self.panel_bookmarks.clear();
         self.panel_discovery_root = None;
         self.threads.clear();
@@ -291,6 +297,7 @@ impl AgentNavigationState {
     /// would leave ghost rows in `/subagents`.
     pub(crate) fn remove(&mut self, thread_id: ThreadId) {
         self.panel_details.remove(&thread_id);
+        self.panel_pending_approvals.remove(&thread_id);
         self.panel_bookmarks.remove(&thread_id);
         self.threads.remove(&thread_id);
         self.order.retain(|candidate| *candidate != thread_id);

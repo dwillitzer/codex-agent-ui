@@ -1,0 +1,131 @@
+{
+  "date": "2026-11-17",
+  "platform": "Intel macOS",
+  "branch": "feat/parent-agent-panel",
+  "implementationBase": "8a1bd4d1c9fc865754c7691e3f9839d1fe7bb489",
+  "sourceHashes": {
+    "codex-rs/tui/src/app/agent_navigation.rs": "ce608e7253c866e73d87d59639e7d48222152bb10fb9989eb85cf716e9217fe5",
+    "codex-rs/tui/src/app/agent_panel.rs": "0326c25fec900e7b669b1b75f73d9856c81296fdcddc1f737b24884a23286b5e",
+    "codex-rs/tui/src/app/event_dispatch.rs": "8b898b85799b5351ae1fdad0469aa8f4ea5ef433f7a0dec11b073ca9f985c41c",
+    "codex-rs/tui/src/app/tests/agent_panel_tests.rs": "f0b479968d7a25b36e54bbb8e923560e1a57655104d92bc155f1a76a5eded1f1",
+    "codex-rs/tui/src/app/thread_routing.rs": "11e8fef326a54441af797ac2f899e3d2e01dc555ddf5143b6d881e408f7c3cce",
+    "codex-rs/tui/src/app_event.rs": "46a6859c2dfa98ad25d899d40d8e8e6fd0af98f030e425a4875045adcce123f1",
+    "codex-rs/tui/src/bottom_pane/chat_composer.rs": "febcd47e26bba56224b83cc2ffff0d3c67369dbbab989b252bd8850ea630e50d",
+    "codex-rs/tui/src/bottom_pane/mod.rs": "4c3944b49702593b09684055e8cb57e1d4a95814be17b27857635e4c48236a6c",
+    "codex-rs/tui/src/bottom_pane/subagent_panel.rs": "cf38faa6fa478cc28b60146d22838978597ea283648bb8bd755d68d9b3a35ba4",
+    "codex-rs/tui/src/bottom_pane/tests/subagent_panel_navigation_tests.rs": "ec7a15d2fcda236eb2cc3cba87d1a7149e6c5acb4e3e22b61e3e4b2fa4e788e6",
+    "codex-rs/tui/src/chatwidget.rs": "d88a5d9bb5a239b3766a0fcc8d8ec9460d97955d5c2cda589e8356821d38f06a",
+    "scripts/evaluate-subagent-panel.mjs": "ce6b361e73c51a0b75075a2d6335f0bc32956e0a9848a9e19027a87031edd121"
+  },
+  "executable": {
+    "path": "codex-rs/target/debug/codex",
+    "version": "0.0.0",
+    "sha256": "7686b58d993fdf18baec88c320baa766bfb5b747d953c87d448cb7ebfa237e6c"
+  },
+  "checks": [
+    {
+      "name": "focused-tests",
+      "program": "cargo",
+      "args": [
+        "nextest",
+        "run",
+        "--locked",
+        "-p",
+        "codex-tui",
+        "--lib",
+        "--profile",
+        "local",
+        "--test-threads",
+        "4",
+        "--no-fail-fast",
+        "-E",
+        "test(subagent_panel) | test(agent_panel_tests) | test(agents_navigation) | test(pending_thread_approvals) | test(inactive_thread_approval)"
+      ],
+      "code": 0
+    },
+    {
+      "name": "thread-switch",
+      "program": "cargo",
+      "args": [
+        "nextest",
+        "run",
+        "--locked",
+        "-p",
+        "codex-tui",
+        "--lib",
+        "--profile",
+        "local",
+        "--test-threads",
+        "4",
+        "--no-fail-fast",
+        "-E",
+        "test(open_agent_picker) | test(select_uncached_agent_thread) | test(replay_thread_snapshot_restores_draft) | test(embedded_session_switch_routes_background_approval_and_restores_draft) | test(agents_overview_stop_) | test(transcript_view::bookmark) | test(replace_chat_widget)"
+      ],
+      "code": 0
+    },
+    {
+      "name": "clippy",
+      "program": "cargo",
+      "args": [
+        "clippy",
+        "--locked",
+        "-p",
+        "codex-tui",
+        "--all-targets",
+        "--no-deps",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "code": 0
+    },
+    {
+      "name": "cli",
+      "program": "cargo",
+      "args": ["build", "--locked", "-p", "codex-cli", "--bin", "codex"],
+      "code": 0
+    }
+  ],
+  "tests": {
+    "focused": 53,
+    "threadSwitch": 20,
+    "total": 73,
+    "allPassed": true,
+    "runner": "Nextest isolated processes; temporary HOME; RUST_MIN_STACK=8388608"
+  },
+  "live": {
+    "workspace": "codex-ui-filter-review",
+    "pane": "w3B:p1",
+    "parentThreadId": "01a1eae6-9620-7f42-aae6-7dfd8791498f",
+    "nativeChildren": 2,
+    "assertions": [
+      "Active includes only running child plus Main",
+      "Child inspection retains Active",
+      "Completion leaves empty Active without changing viewed transcript",
+      "Main return retains filter",
+      "Done shows both completed children",
+      "Failed empty state retains Main",
+      "All restores both children and metadata"
+    ],
+    "fixtures": {
+      "source.txt": {
+        "sha256": "e4652901f5907b85f7b197017bceb11838109e3053ca84580b418ff59cd883aa",
+        "unchanged": true
+      },
+      "backlog.md": {
+        "sha256": "013f2b571979abb4e4497e4956363498a69219ebb358979c0836ef1c9462c008",
+        "unchanged": true
+      }
+    }
+  },
+  "limits": [
+    "No full-suite replay",
+    "No Linux or Windows UI evaluation",
+    "Approval and explicit failure use app-server test fixtures rather than live terminal requests",
+    "Compatible signed companion host is a local prerequisite; source host build blocked by pinned Intel V8 artifact"
+  ],
+  "companion": {
+    "sha256": "79a93adf3878978f076702e87fa3d91af490e00b8d8ebdc07770ef975c060879",
+    "distributed": false
+  }
+}

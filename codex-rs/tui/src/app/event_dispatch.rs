@@ -3525,6 +3525,9 @@ impl App {
                 self.agent_navigation.panel_collapsed = collapsed;
                 self.sync_subagent_panel();
             }
+            AppEvent::SetAgentPanelFilter { parent_thread_id, filter } => {
+                self.apply_agent_panel_filter(parent_thread_id, filter);
+            }
             AppEvent::RestoreAgentPanelBookmark(thread_id) => {
                 if self.current_displayed_thread_id() == Some(thread_id)
                     && let Some(bookmark) = self.agent_navigation.panel_bookmarks.remove(&thread_id)

@@ -13,6 +13,7 @@ fn rows() -> Vec<subagent_panel::SubagentPanelRow> {
             model_context: "model · ctx unavailable".into(),
             task: String::new(),
             active: id == 2,
+            approval_pending: false,
             current: id == 1,
             started: None,
             elapsed: None,
@@ -139,6 +140,52 @@ fn subagent_panel_stop_requests_confirmation_for_selected_id() {
     pane.handle_subagent_panel_navigation_key(KeyCode::Char('a').into());
     assert!(
         matches!(rx.try_recv(), Ok(AppEvent::AgentPanelStopTurn {thread_id, confirmed: false}) if thread_id == ThreadId::from_u128(2))
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn subagent_panel_f_cycles_once_per_press_without_editing_the_draft() {
+    use subagent_panel::AgentStatusFilter::Active;
+    use subagent_panel::AgentStatusFilter::All;
+    use subagent_panel::AgentStatusFilter::Done;
+    use subagent_panel::AgentStatusFilter::Failed;
+    let (tx, mut rx) = unbounded_channel();
+    let mut pane = test_pane(AppEventSender::new(tx));
+    pane.set_subagent_panel(rows(), false);
+    pane.composer.insert_str("keep this draft");
+    pane.focus_subagent_panel();
+    for expected in [Active, Done, Failed, All] {
+        assert!(pane.handle_subagent_panel_navigation_key(KeyCode::Char('f').into()));
+        assert_eq!(pane.subagent_panel.filter(), expected);
+        pane.handle_subagent_panel_navigation_key(KeyEvent::new_with_kind(
+            KeyCode::Char('f'),
+            KeyModifiers::NONE,
+            KeyEventKind::Repeat,
+        ));
+        assert_eq!(pane.subagent_panel.filter(), expected);
+        assert!(
+            matches!(rx.try_recv(), Ok(AppEvent::SetAgentPanelFilter { parent_thread_id, filter }) if filter == expected && parent_thread_id == ThreadId::from_u128(1))
+        );
+    }
+    assert_eq!(pane.composer.current_text(), "keep this draft");
+    assert!(rx.try_recv().is_err());
+    pane.subagent_panel.blur();
+    assert!(!pane.handle_subagent_panel_navigation_key(KeyCode::Char('f').into()));
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn subagent_panel_empty_filter_enter_returns_main_and_ignores_hidden_child() {
+    let (tx, mut rx) = unbounded_channel();
+    let mut pane = test_pane(AppEventSender::new(tx));
+    pane.set_subagent_panel(rows(), false);
+    pane.focus_subagent_panel();
+    pane.set_subagent_panel_filter(subagent_panel::AgentStatusFilter::Failed);
+    pane.handle_subagent_panel_navigation_key(KeyCode::Down.into());
+    pane.handle_key_event(KeyCode::Enter.into());
+    assert!(
+        matches!(rx.try_recv(), Ok(AppEvent::SelectAgentThread(id)) if id == ThreadId::from_u128(1))
     );
     assert!(rx.try_recv().is_err());
 }

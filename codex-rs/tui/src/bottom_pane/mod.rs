@@ -1813,6 +1813,25 @@ impl BottomPane {
             return false;
         }
         if self.subagent_panel.focused() {
+            if matches!(key.code, KeyCode::Char('f' | 'F'))
+                && matches!(
+                    key.modifiers,
+                    crossterm::event::KeyModifiers::NONE | crossterm::event::KeyModifiers::SHIFT
+                )
+            {
+                if key.kind == KeyEventKind::Press {
+                    let filter = self.subagent_panel.filter().next();
+                    self.subagent_panel.set_filter(filter);
+                    if let Some(parent_thread_id) = self.subagent_panel.parent_id() {
+                        self.app_event_tx.send(AppEvent::SetAgentPanelFilter {
+                            parent_thread_id,
+                            filter,
+                        });
+                    }
+                    self.request_redraw();
+                }
+                return true;
+            }
             if key.modifiers.is_empty() {
                 match key.code {
                     KeyCode::Up => self.subagent_panel.move_selection(false),
@@ -1820,8 +1839,8 @@ impl BottomPane {
                     KeyCode::Enter => {
                         if let Some(id) = self.subagent_panel.selected() {
                             self.app_event_tx.send(AppEvent::SelectAgentThread(id));
+                            self.subagent_panel.blur();
                         }
-                        self.subagent_panel.blur();
                     }
                     KeyCode::Esc | KeyCode::F(6) => self.subagent_panel.blur(),
                     KeyCode::Char('a') => {
@@ -1900,6 +1919,12 @@ impl BottomPane {
         collapsed: bool,
     ) {
         if self.subagent_panel.set(rows, collapsed) {
+            self.request_redraw();
+        }
+    }
+
+    pub(crate) fn set_subagent_panel_filter(&mut self, filter: subagent_panel::AgentStatusFilter) {
+        if self.subagent_panel.set_filter(filter) {
             self.request_redraw();
         }
     }

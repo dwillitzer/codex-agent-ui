@@ -35,6 +35,11 @@ Agents: 1 active / 2 · Alt+←/→ switch (empty prompt) · F6 list
   returns to the composer without interrupting work. Select Main to return to the parent. The
   `>` cursor marks selection; `●` marks the transcript currently viewed. The panel scrolls its
   bounded preview to keep the selected row visible, including when compacted.
+- While focused, `f` cycles **All / Active / Done / Failed**. The list and arrow-key selection
+  shrink to matches; Main remains selectable. Approvals stay Active with a waiting label, and
+  a parent-visible notice remains even if another tab hides the affected agent. Filter state
+  survives inspection within the parent session and resets for a different parent. See the
+  [status-filter specification](subagent-panel-status-filter-spec.md).
 - `a` on a child offers a cancel-first confirmation to stop its current turn. This preserves the
   agent and its history; it does not end its lifetime. The parent is excluded from this action.
   Native background terminals can remain running after turn interruption; use the existing `/stop`
@@ -113,6 +118,8 @@ run and companion-runtime prerequisite. [The inline navigation evaluation](subag
 records the follow-up focus, draft, bookmark, and turn-interruption checks.
 The [assignment evaluation](subagent-panel-assignment-evaluation.md) records direct cycling,
 current one-line summaries, schema compatibility, and the latest tests and live checks.
+The [status-filter evaluation](subagent-panel-status-filter-evaluation.md) records the subsequent
+All/Active/Done/Failed tabs, approval awareness, and 73 selected passing tests plus live checks.
 The upstream contribution policy currently accepts issue-based findings and
 design discussions rather than external code PRs. A tested fork and implementation reference can
 accompany [the existing feature request](https://github.com/openai/codex/issues/43148).

@@ -84,10 +84,14 @@ impl AgentPanelDetails {
     }
 
     pub(super) fn display_state(&self, running: bool, closed: bool, approval: bool) -> &str {
-        if self.stale {
+        if approval {
+            if self.stale {
+                "waiting for approval (reconnecting)"
+            } else {
+                "waiting for approval"
+            }
+        } else if self.stale {
             "unknown (reconnecting)"
-        } else if approval {
-            "needs approval"
         } else if closed {
             "closed"
         } else if self.is_active(running, closed) {
@@ -168,6 +172,17 @@ impl AgentPanelDetails {
 }
 
 impl App {
+    pub(super) fn apply_agent_panel_filter(
+        &mut self,
+        parent: ThreadId,
+        filter: crate::bottom_pane::subagent_panel::AgentStatusFilter,
+    ) {
+        if self.primary_thread_id == Some(parent) {
+            self.agent_navigation.panel_filter = filter;
+            self.sync_subagent_panel();
+        }
+    }
+
     /// Direct cycling follows the same parent-scoped, stable order as the visible panel.
     pub(super) fn panel_adjacent_thread_id(
         &self,
@@ -408,6 +423,7 @@ impl App {
             }
             use codex_app_server_protocol::SubAgentActivityKind;
             match kind {
+                SubAgentActivityKind::Completed if details.status.as_deref() == Some("error") => {}
                 SubAgentActivityKind::Completed | SubAgentActivityKind::Interrupted => {
                     details.status = Some(
                         if matches!(kind, SubAgentActivityKind::Completed) {
@@ -558,6 +574,10 @@ impl App {
 
     pub(super) fn sync_subagent_panel(&mut self) {
         let root = self.primary_thread_id;
+        if self.agent_navigation.panel_filter_root != root {
+            self.agent_navigation.panel_filter_root = root;
+            self.agent_navigation.panel_filter = Default::default();
+        }
         // Discover existing children after resume as well as new live spawns. This uses the
         // existing asynchronous, ancestor-filtered picker refresh; no transcript replay or poll.
         if let Some(root) = root
@@ -578,12 +598,15 @@ impl App {
                 if root.is_none() || details.root != root || Some(id) == root {
                     return None;
                 }
-                let active = details.is_active(entry.is_running, entry.is_closed);
-                let state = details.display_state(
-                    entry.is_running,
-                    entry.is_closed,
-                    self.agent_navigation.pending_approvals.contains(&id),
-                );
+                let approval_pending = self.agent_navigation.panel_pending_approvals.contains(&id)
+                    || self.agent_navigation.pending_approvals.contains(&id);
+                let active = approval_pending
+                    || details.is_active(entry.is_running, entry.is_closed)
+                    || (!details.stale
+                        && !entry.is_closed
+                        && details.status.as_deref() == Some("starting"));
+                let state =
+                    details.display_state(entry.is_running, entry.is_closed, approval_pending);
                 Some(SubagentPanelRow {
                     id,
                     parent: false,
@@ -597,6 +620,7 @@ impl App {
                     model_context: details.model_context(),
                     task: details.assignment_text().to_owned(),
                     active,
+                    approval_pending,
                     current: current == Some(id),
                     started: details.started,
                     elapsed: details.elapsed,
@@ -615,6 +639,7 @@ impl App {
                     model_context: "Return to the parent transcript".into(),
                     task: String::new(),
                     active: false,
+                    approval_pending: false,
                     current: current == Some(root),
                     started: None,
                     elapsed: None,
@@ -623,6 +648,8 @@ impl App {
         }
         self.chat_widget
             .set_subagent_panel(rows, self.agent_navigation.panel_collapsed);
+        self.chat_widget
+            .set_subagent_panel_filter(self.agent_navigation.panel_filter);
     }
 
     fn resolve_agent_panel_lineage(&mut self, root: ThreadId) {

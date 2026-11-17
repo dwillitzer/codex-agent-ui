@@ -479,6 +479,10 @@ pub(crate) enum AppEvent {
     /// Open the agent picker for switching active threads.
     OpenAgentPicker,
     SetAgentPanelCollapsed(bool),
+    SetAgentPanelFilter {
+        parent_thread_id: ThreadId,
+        filter: crate::bottom_pane::subagent_panel::AgentStatusFilter,
+    },
     RestoreAgentPanelBookmark(ThreadId),
     AgentPanelStopTurn {
         thread_id: ThreadId,

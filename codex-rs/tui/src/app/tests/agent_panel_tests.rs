@@ -86,6 +86,120 @@ async fn agent_assignment_direct_cycle_stays_in_parent_family() {
 }
 
 #[tokio::test]
+async fn agent_panel_status_filter_survives_widget_replacement_and_resets_for_new_parent() {
+    use crate::bottom_pane::subagent_panel::AgentStatusFilter;
+    let (mut app, _, _) = make_test_app_with_channels().await;
+    let root = ThreadId::from_u128(1);
+    let child = ThreadId::from_u128(2);
+    app.primary_thread_id = Some(root);
+    app.active_thread_id = Some(root);
+    let event = spawn(root, child, Some("review-model"));
+    app.track_agent_panel_notification(&event);
+    app.cache_collab_receiver_threads_for_notification(&event);
+    app.sync_subagent_panel();
+    app.agent_navigation.panel_filter = AgentStatusFilter::Failed;
+    app.sync_subagent_panel();
+    assert!(render_bottom_popup(&app.chat_widget, 140).contains("[Failed 0]"));
+    let mut replacement = make_test_app().await;
+    std::mem::swap(&mut app.chat_widget, &mut replacement.chat_widget);
+    app.active_thread_id = Some(child);
+    app.sync_subagent_panel();
+    assert!(render_bottom_popup(&app.chat_widget, 140).contains("[Failed 0]"));
+    app.primary_thread_id = Some(ThreadId::from_u128(3));
+    app.sync_subagent_panel();
+    app.apply_agent_panel_filter(root, AgentStatusFilter::Failed);
+    assert_eq!(app.agent_navigation.panel_filter, AgentStatusFilter::All);
+}
+
+#[tokio::test]
+async fn agent_panel_status_filter_keeps_viewed_child_approval_active_and_globally_visible() {
+    use crate::bottom_pane::subagent_panel::AgentStatusFilter;
+    let (mut app, _, _) = make_test_app_with_channels().await;
+    let root = ThreadId::from_u128(1);
+    let child = ThreadId::from_u128(2);
+    app.primary_thread_id = Some(root);
+    app.active_thread_id = Some(child);
+    let event = spawn(root, child, Some("review-model"));
+    app.track_agent_panel_notification(&event);
+    app.cache_collab_receiver_threads_for_notification(&event);
+    app.ensure_thread_channel(child)
+        .store
+        .lock()
+        .await
+        .push_request(exec_approval_request(
+            child,
+            "approval-turn",
+            "approval-call",
+            None,
+        ));
+    app.refresh_pending_thread_approvals().await;
+    assert!(!app.agent_navigation.pending_approvals.contains(&child));
+    assert!(
+        app.agent_navigation
+            .panel_pending_approvals
+            .contains(&child)
+    );
+    app.agent_navigation.panel_filter = AgentStatusFilter::Failed;
+    app.sync_subagent_panel();
+    let hidden = render_bottom_popup(&app.chat_widget, 140);
+    assert!(hidden.contains("1 approval pending"), "{hidden}");
+    assert!(hidden.contains("No agents match Failed."), "{hidden}");
+    app.agent_navigation.panel_filter = AgentStatusFilter::Active;
+    app.sync_subagent_panel();
+    let active = render_bottom_popup(&app.chat_widget, 140);
+    assert!(active.contains("waiting for approval"), "{active}");
+    assert!(active.contains("[Active 1]"), "{active}");
+    app.thread_event_channels[&child]
+        .store
+        .lock()
+        .await
+        .note_outbound_op(&Op::ExecApproval {
+            id: "approval-call".into(),
+            turn_id: Some("approval-turn".into()),
+            decision: codex_app_server_protocol::CommandExecutionApprovalDecision::Cancel,
+        });
+    app.refresh_pending_thread_approvals().await;
+    assert!(
+        !app.agent_navigation
+            .panel_pending_approvals
+            .contains(&child)
+    );
+    assert!(!render_bottom_popup(&app.chat_widget, 140).contains("approval pending"));
+}
+
+#[tokio::test]
+async fn agent_panel_status_filter_preserves_explicit_failure_over_generic_completion() {
+    use codex_app_server_protocol::SubAgentActivityKind;
+    let (mut app, _, _) = make_test_app_with_channels().await;
+    let root = ThreadId::from_u128(1);
+    let child = ThreadId::from_u128(2);
+    app.primary_thread_id = Some(root);
+    let event = spawn(root, child, Some("review-model"));
+    app.track_agent_panel_notification(&event);
+    app.cache_collab_receiver_threads_for_notification(&event);
+    app.track_agent_panel_notification(&ServerNotification::TurnCompleted(
+        codex_app_server_protocol::TurnCompletedNotification {
+            thread_id: child.to_string(),
+            turn: test_turn("failed-turn", TurnStatus::Failed, vec![]),
+        },
+    ));
+    app.track_agent_panel_notification(&assignment_activity(
+        root,
+        child,
+        None,
+        SubAgentActivityKind::Completed,
+    ));
+    assert_eq!(
+        app.agent_navigation.panel_details[&child].status.as_deref(),
+        Some("error")
+    );
+    app.agent_navigation.panel_filter =
+        crate::bottom_pane::subagent_panel::AgentStatusFilter::Failed;
+    app.sync_subagent_panel();
+    assert!(render_bottom_popup(&app.chat_widget, 140).contains("[Failed 1]"));
+}
+
+#[tokio::test]
 async fn agent_assignment_uses_current_parent_summary_instead_of_initial_prompt() {
     use codex_app_server_protocol::SubAgentActivityKind;
     let (mut app, _, _) = make_test_app_with_channels().await;
@@ -370,7 +484,10 @@ fn agent_panel_state_distinguishes_idle_waiting_completed_and_disconnected() {
     details.status = Some("waiting".into());
     assert_eq!(details.display_state(true, false, false), "waiting");
     assert!(details.is_active(true, false));
-    assert_eq!(details.display_state(true, false, true), "needs approval");
+    assert_eq!(
+        details.display_state(true, false, true),
+        "waiting for approval"
+    );
     details.status = Some("done".into());
     assert_eq!(details.display_state(true, false, false), "done");
     assert!(!details.is_active(true, false));

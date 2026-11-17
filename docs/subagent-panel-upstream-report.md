@@ -24,6 +24,11 @@ selectable to return to the parent, preserving its draft and reading bookmark. E
 panel focus without interrupting work. Compact/expand/focus commands do not submit model input.
 No tmux, new server RPC, or periodic backend polling is required.
 
+The focused bar also offers All/Active/Done/Failed tabs, cycled with `f`. Arrow navigation uses
+the filtered rows while Main remains selectable. The filter survives child inspection and
+resets for a different parent. Pending approvals stay Active and retain a parent-visible count
+even when another tab hides the child. Existing user/policy approval decisions remain unchanged.
+
 The parent supplies a bounded one-line summary through `agent_ui.set_assignment` after dispatch
 and follow-up. The native collaboration parameter schemas remain unchanged because the model API
 reserves them. An optional activity metadata field carries the caption through live notifications
@@ -43,7 +48,7 @@ by the existing backend. The preview is bounded and yields to the existing modal
 
 Validation on Intel macOS:
 
-- The latest increment passed 931 distinct selected tests: 388 protocol, 326 API/schema, 149 core
+- The assignment increment passed 931 distinct selected tests: 388 protocol, 326 API/schema, 149 core
   agent/factory, 38 UI state/render/navigation, 20 existing thread-switch regressions, and 10 Python
   SDK contract cases. Stable/experimental exports and generated Python types were refreshed.
 - The passing core selection included one Nextest process-output leak warning, documented by
@@ -63,6 +68,11 @@ Validation on Intel macOS:
 - The latest live session verified one-gesture direct switching, assignment replacement on a
   follow-up, caption retention after restart, automatic label reporting without a helper-specific
   user request, and preservation of word editing with an unsent draft.
+- The subsequent status-filter increment passed 53 selected panel/navigation/approval tests and
+  20 existing thread-switch regressions, strict TUI Clippy, and a CLI build. A separate live session
+  verified mixed-status filtering, child inspection and return with filter retention, an empty
+  Failed tab with Main available, and restoration of All. Approval and explicit-failure cases
+  were exercised through app-server test fixtures, not live terminal prompts.
 
 The local CLI required a compatible signed companion from the installed ChatGPT application:
 the pinned V8 Intel artifact needed to build the host from source returned 404. This local runtime
@@ -73,6 +83,8 @@ prerequisite and the unrun Linux/Windows UI checks are documented in the
 and executable hashes document the navigation increment. The latest
 [assignment evaluation](subagent-panel-assignment-evaluation.md) records the metadata and direct
 navigation changes with a separate source/binary manifest.
+The [status-filter evaluation](subagent-panel-status-filter-evaluation.md) records the subsequent
+filter behavior, limits, and its own source/binary manifest.
 
 The intent is to share the behavior, implementation observations, and evidence through the issue
 tracker in accordance with the current contribution policy. The fork is an implementation

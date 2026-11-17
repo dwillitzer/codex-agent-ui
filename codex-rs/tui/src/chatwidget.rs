@@ -1516,6 +1516,13 @@ impl ChatWidget {
         self.bottom_pane.subagent_panel_focused()
     }
 
+    pub(crate) fn set_subagent_panel_filter(
+        &mut self,
+        filter: crate::bottom_pane::subagent_panel::AgentStatusFilter,
+    ) {
+        self.bottom_pane.set_subagent_panel_filter(filter);
+    }
+
     pub(crate) fn set_subagent_panel(
         &mut self,
         rows: Vec<crate::bottom_pane::subagent_panel::SubagentPanelRow>,

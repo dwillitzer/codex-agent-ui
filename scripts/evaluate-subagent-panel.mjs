@@ -227,6 +227,26 @@ const checks = [
     join(root, "codex-rs"),
   ],
   [
+    "status-filter-tests",
+    "cargo",
+    [
+      "nextest",
+      "run",
+      "--locked",
+      "-p",
+      "codex-tui",
+      "--lib",
+      "--profile",
+      "local",
+      "--test-threads",
+      "4",
+      "--no-fail-fast",
+      "-E",
+      "test(subagent_panel) | test(agent_panel_tests) | test(agents_navigation) | test(pending_thread_approvals) | test(inactive_thread_approval)",
+    ],
+    join(root, "codex-rs"),
+  ],
+  [
     "tui-suite",
     "cargo",
     [

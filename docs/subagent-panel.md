@@ -7,20 +7,22 @@ thread navigation and app-server lifecycle events; tmux is not required.
 
 The panel appears once the current primary session has child agents. It shows an active count and
 up to three children, prioritizing the currently viewed child and active children. Each row shows
-its name/path, state, model, context usage, and elapsed time when available. A second line keeps
-model and context readable at ordinary terminal widths; wider terminals also show the task
-preview when the backend supplies one. Additional children remain in `/subagents`.
+its name/path, state, elapsed time, and a short assignment on one line. A second line keeps model
+and context readable at ordinary terminal widths. Additional children remain in `/subagents`.
 
 For example (synthetic data):
 
 ```text
-Agents: 1 active / 2 · F6 select · /subagents compact
- · /root/source-review · running · 1m14s
-  review-model · ctx 50% used (60K/108K) · Review source and report findings
- · /root/tests · done · 0m42s
-  test-model · ctx 12% used (24K/108K) · Run regression tests
+Agents: 1 active / 2 · Alt+←/→ switch (empty prompt) · F6 list
+ · /root/source-review · running · 1m14s — Audit retry validation
+  review-model · ctx 50% used (60K/108K)
+ · /root/tests · done · 0m42s — Run retry regression tests
+  test-model · ctx 12% used (24K/108K)
 ```
 
+- **Option/Alt + Left or Right**: switch directly between agent transcripts and Main from an
+  empty prompt, without opening a list or pressing Enter. With text present, these keys retain
+  their existing word-editing behavior.
 - `/subagents`: inspect all discovered agents and select one with Enter to watch its existing
   conversation. Select `Main [default]` to return to the parent. The existing previous/next agent
   shortcuts also continue to work.
@@ -57,6 +59,16 @@ The model is the child's configured model from thread metadata/settings or spawn
 runtime model-reroute notifications applied when available. It is not independent proof of which
 upstream provider actually served a request. No parent-model fallback is invented.
 
+Assignment text comes from the parent's `agent_ui.set_assignment` metadata call after native v2
+spawn and follow-up operations. It accepts the existing agent's task name or ID and a summary of
+at most 80 characters. Model-reserved collaboration tool signatures remain unchanged. The producer
+and UI normalize the summary to one bounded line; ordinary messages,
+completion events, and older history pages do not replace the latest reported assignment.
+Retained activity history restores summaries after resume. Older records without this metadata
+use a saved thread title when available, otherwise `Assignment unavailable`. The panel does not
+use the opening prompt as the assignment. The parent supplies the short title as part of its
+ordinary workflow; updating this metadata does not wake the child or send it input.
+
 Context uses the child's **latest response** token usage and reported context-window size. It does
 not use cumulative session tokens. The percentage follows Codex's existing baseline-adjusted
 context calculation; the accompanying counts show raw reported occupancy/window size. Missing or
@@ -84,7 +96,8 @@ The active count describes child-turn activity, not all background operating-sys
 - `bottom_pane/subagent_panel.rs`: bounded preview and explicit focus/selection state; IDs keep
   selection stable through live updates. The existing picker remains available for the full list.
 
-No app-server protocol or core agent-execution behavior changes are required by this implementation.
+No new server RPC or alternative agent executor is required. An optional activity metadata field
+carries the assignment summary through live events and stored history; old records remain readable.
 The feature affects this fork's terminal client, not the desktop app or IDE extension.
 
 Ending an agent is a separate future backend capability. The existing app-server API exposes turn
@@ -98,6 +111,8 @@ See [the evaluation record](subagent-panel-evaluation.md) for commands, results,
 acceptance matrix, and [the live TUI evaluation](subagent-panel-live-evaluation.md) for the Herdr
 run and companion-runtime prerequisite. [The inline navigation evaluation](subagent-panel-navigation-evaluation.md)
 records the follow-up focus, draft, bookmark, and turn-interruption checks.
+The [assignment evaluation](subagent-panel-assignment-evaluation.md) records direct cycling,
+current one-line summaries, schema compatibility, and the latest tests and live checks.
 The upstream contribution policy currently accepts issue-based findings and
 design discussions rather than external code PRs. A tested fork and implementation reference can
 accompany [the existing feature request](https://github.com/openai/codex/issues/43148).

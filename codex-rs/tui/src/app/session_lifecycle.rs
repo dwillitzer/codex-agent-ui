@@ -234,18 +234,14 @@ impl App {
                             .get(&thread_id)
                             .map(|details| {
                                 format!(
-                                    "{} · {}{} · {uuid}",
+                                    "{} · {} · {} · {uuid}",
                                     details.display_state(
                                         entry.is_running,
                                         entry.is_closed,
                                         is_pending
                                     ),
                                     details.model_context(),
-                                    if details.task.is_empty() {
-                                        String::new()
-                                    } else {
-                                        format!(" · {}", details.task)
-                                    },
+                                    details.assignment_text(),
                                 )
                             })
                             .unwrap_or_else(|| uuid.clone()),
@@ -1790,6 +1786,9 @@ impl App {
         direction: AgentNavigationDirection,
     ) -> Option<ThreadId> {
         let current_thread = self.current_displayed_thread_id();
+        if let Some(thread_id) = self.panel_adjacent_thread_id(direction) {
+            return Some(thread_id);
+        }
         if let Some(thread_id) = self
             .agent_navigation
             .adjacent_thread_id(current_thread, direction)
@@ -1809,8 +1808,10 @@ impl App {
         {
             self.last_subagent_backfill_attempt = Some(primary_thread_id);
         }
-        self.agent_navigation
-            .adjacent_thread_id(self.current_displayed_thread_id(), direction)
+        self.panel_adjacent_thread_id(direction).or_else(|| {
+            self.agent_navigation
+                .adjacent_thread_id(self.current_displayed_thread_id(), direction)
+        })
     }
 
     pub(super) async fn resume_target_session(

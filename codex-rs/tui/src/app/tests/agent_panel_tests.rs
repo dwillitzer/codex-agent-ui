@@ -11,6 +11,7 @@ fn spawn(parent: ThreadId, child: ThreadId, model: Option<&str>) -> ServerNotifi
         parent.to_string(),
         "parent-turn".into(),
         ThreadItemPayload::SubAgentActivity {
+            task_summary: None,
             id: format!("spawn-{child}"),
             kind: codex_app_server_protocol::SubAgentActivityKind::Started,
             agent_thread_id: child.to_string(),
@@ -40,6 +41,166 @@ fn usage(id: ThreadId, last: i64, total: i64, window: Option<i64>) -> ServerNoti
             model_context_window: window,
         },
     })
+}
+
+fn assignment_activity(
+    root: ThreadId,
+    child: ThreadId,
+    summary: Option<&str>,
+    kind: codex_app_server_protocol::SubAgentActivityKind,
+) -> ServerNotification {
+    let mut event = spawn(root, child, Some("review-model"));
+    if let ServerNotification::ItemStarted(item) = &mut event
+        && let ThreadItemPayload::SubAgentActivity {
+            task_summary,
+            kind: activity_kind,
+            ..
+        } = &mut item.item.payload
+    {
+        *task_summary = summary.map(str::to_owned);
+        *activity_kind = kind;
+    }
+    event
+}
+
+#[tokio::test]
+async fn agent_assignment_direct_cycle_stays_in_parent_family() {
+    use crate::app::agent_navigation::AgentNavigationDirection::Next;
+    use crate::app::agent_navigation::AgentNavigationDirection::Previous;
+    let (mut app, _, _) = make_test_app_with_channels().await;
+    let root = ThreadId::from_u128(1);
+    let child = ThreadId::from_u128(2);
+    let foreign = ThreadId::from_u128(3);
+    app.primary_thread_id = Some(root);
+    app.active_thread_id = Some(root);
+    app.upsert_agent_picker_thread(root, None, None, false);
+    app.track_agent_panel_notification(&spawn(root, child, Some("review-model")));
+    app.upsert_agent_picker_thread(child, None, None, false);
+    app.upsert_agent_picker_thread(foreign, None, None, false);
+    assert_eq!(app.panel_adjacent_thread_id(Next), Some(child));
+    assert_eq!(app.panel_adjacent_thread_id(Previous), Some(child));
+    app.active_thread_id = Some(child);
+    assert_eq!(app.panel_adjacent_thread_id(Next), Some(root));
+    app.active_thread_id = Some(foreign);
+    assert_eq!(app.panel_adjacent_thread_id(Next), Some(root));
+}
+
+#[tokio::test]
+async fn agent_assignment_uses_current_parent_summary_instead_of_initial_prompt() {
+    use codex_app_server_protocol::SubAgentActivityKind;
+    let (mut app, _, _) = make_test_app_with_channels().await;
+    let root = ThreadId::from_u128(1);
+    let child = ThreadId::from_u128(2);
+    app.primary_thread_id = Some(root);
+    app.active_thread_id = Some(root);
+    app.upsert_agent_picker_thread(child, Some("Reviewer".into()), None, false);
+    let mut thread: codex_app_server_protocol::Thread = serde_json::from_value(serde_json::json!({
+        "id": child.to_string(), "sessionId": root.to_string(), "parentThreadId": root.to_string(),
+        "preview": "Your initial prompt says to sleep first and then follow many detailed instructions",
+        "ephemeral": false, "modelProvider": "openai", "model": "review-model",
+        "createdAt": 1, "updatedAt": 2, "status": {"type":"idle"}, "cwd": "/tmp",
+        "cliVersion": "0.0.0", "source": "unknown", "turns": []
+    })).unwrap();
+    app.remember_agent_panel_thread(root, &thread);
+    app.sync_subagent_panel();
+    let unknown = render_bottom_popup(&app.chat_widget, 140);
+    assert!(unknown.contains("Assignment unavailable"), "{unknown}");
+    assert!(!unknown.contains("initial prompt"));
+    thread.name = Some("Saved audit title".into());
+    app.remember_agent_panel_thread(root, &thread);
+    assert_eq!(
+        app.agent_navigation.panel_details[&child].assignment_text(),
+        "Saved audit title"
+    );
+    app.track_agent_panel_notification(&assignment_activity(
+        root,
+        child,
+        Some("Audit retry validation"),
+        SubAgentActivityKind::Started,
+    ));
+    app.remember_agent_panel_thread(root, &thread);
+    let rendered = render_bottom_popup(&app.chat_widget, 140);
+    assert!(rendered.contains("Audit retry validation"), "{rendered}");
+    assert!(!rendered.contains("Saved audit title"));
+    app.track_agent_panel_notification(&assignment_activity(
+        root,
+        child,
+        Some("Check null retry limits"),
+        SubAgentActivityKind::Interacted,
+    ));
+    app.track_agent_panel_notification(&assignment_activity(
+        root,
+        child,
+        None,
+        SubAgentActivityKind::Completed,
+    ));
+    let rendered = render_bottom_popup(&app.chat_widget, 140);
+    assert!(rendered.contains("Check null retry limits"), "{rendered}");
+    assert!(!rendered.contains("Audit retry validation"));
+}
+
+#[tokio::test]
+async fn agent_assignment_history_restores_latest_without_overwriting_live_updates() {
+    use codex_app_server_protocol::SubAgentActivityKind;
+    let (mut app, _, _) = make_test_app_with_channels().await;
+    let root = ThreadId::from_u128(1);
+    let child = ThreadId::from_u128(2);
+    app.primary_thread_id = Some(root);
+    let turn = |id: &str, summary: &str| {
+        let ServerNotification::ItemStarted(item) =
+            assignment_activity(root, child, Some(summary), SubAgentActivityKind::Interacted)
+        else {
+            unreachable!()
+        };
+        test_turn(id, TurnStatus::Completed, vec![item.item.payload])
+    };
+    let older = turn("older", "Audit retries");
+    let recent = turn("recent", "Check null limits");
+    app.restore_agent_assignments(root, &[older.clone(), recent]);
+    assert_eq!(
+        app.agent_navigation.panel_details[&child].assignment_text(),
+        "Check null limits"
+    );
+    assert!(app.agent_navigation.panel_details[&child].status.is_none());
+    assert!(app.agent_navigation.panel_details[&child].root.is_none());
+    app.track_agent_panel_notification(&assignment_activity(
+        root,
+        child,
+        Some("Review final patch"),
+        SubAgentActivityKind::Interacted,
+    ));
+    app.restore_agent_assignments(root, &[older]);
+    assert_eq!(
+        app.agent_navigation.panel_details[&child].assignment_text(),
+        "Review final patch"
+    );
+    let sibling = ThreadId::from_u128(3);
+    // Discovering the child's actual parent is independent of assignment-message senders.
+    app.agent_navigation
+        .panel_details
+        .get_mut(&child)
+        .unwrap()
+        .parent = Some(root);
+    app.track_agent_panel_notification(&assignment_activity(
+        root,
+        sibling,
+        Some("Review tests"),
+        SubAgentActivityKind::Started,
+    ));
+    app.track_agent_panel_notification(&assignment_activity(
+        sibling,
+        child,
+        Some("Review edge cases"),
+        SubAgentActivityKind::Interacted,
+    ));
+    assert_eq!(
+        app.agent_navigation.panel_details[&child].parent,
+        Some(root)
+    );
+    assert_eq!(
+        app.agent_navigation.panel_details[&child].assignment_text(),
+        "Review edge cases"
+    );
 }
 
 #[tokio::test]

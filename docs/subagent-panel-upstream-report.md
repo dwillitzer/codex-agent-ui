@@ -14,13 +14,21 @@ based on upstream `42248f5ef988883cebce298c2279ce22cb536726`.
 
 The implementation adds a bounded persistent preview above the composer, scoped to the primary
 thread's descendants. It shows active count, child names/paths, states, configured models, latest
-reported context usage, and available elapsed timing. The existing `/subagents` picker exposes
+reported context usage, available elapsed timing, and a short assignment on each main row.
+Option/Alt + Left/Right switches directly from an empty prompt, in the same known parent family;
+word editing retains those keys while a draft is present. The existing `/subagents` picker exposes
 the same metadata and still opens the child's existing transcript. F6, or Down from an empty
 prompt, explicitly focuses inline selection. A cursor marks selection separately from the viewed
 transcript, and a child-view banner makes direct-input restrictions explicit. Main remains
 selectable to return to the parent, preserving its draft and reading bookmark. Escape leaves
 panel focus without interrupting work. Compact/expand/focus commands do not submit model input.
-No tmux, new server protocol, or periodic backend polling is required.
+No tmux, new server RPC, or periodic backend polling is required.
+
+The parent supplies a bounded one-line summary through `agent_ui.set_assignment` after dispatch
+and follow-up. The native collaboration parameter schemas remain unchanged because the model API
+reserves them. An optional activity metadata field carries the caption through live notifications
+and persisted history. Older records remain readable and use a saved title or an explicit unknown
+assignment. Historical activities cannot grant parent membership or overwrite newer live labels.
 
 The panel also offers cancel-first confirmation before interrupting a selected child's current
 turn. Parent membership and backend ownership are rechecked at confirmation time. This preserves
@@ -35,21 +43,26 @@ by the existing backend. The preview is bounded and yields to the existing modal
 
 Validation on Intel macOS:
 
-- The final inline-navigation increment passed 55 distinct targeted tests, including app-level
-  Enter/Escape ownership while reading history, key remaps, held-key draft protection, backend
-  scoping, saved drafts/queues, background approvals, legacy/paginated interruption lookup, and
-  transcript bookmarks. The 20-case Nextest regression selection passed in 24.376 seconds.
+- The latest increment passed 931 distinct selected tests: 388 protocol, 326 API/schema, 149 core
+  agent/factory, 38 UI state/render/navigation, 20 existing thread-switch regressions, and 10 Python
+  SDK contract cases. Stable/experimental exports and generated Python types were refreshed.
+- The passing core selection included one Nextest process-output leak warning, documented by
+  test name in the evidence. This does not imply a clean full-suite or cross-platform run.
 - The initial feature's full shared-process run enumerated 6,230 cases: 6,221 passed, five failed due to shared-process
   Insta inline-snapshot registry collisions, and four were ignored.
 - Nextest isolated reruns of all five failures plus the 25 feature/navigation cases passed:
   30/30. That broad run predates the navigation increment; a new full-suite replay and a single
   all-green full Nextest invocation are not claimed.
 - Strict TUI Clippy passed for all targets with `--no-deps -- -D warnings`. Dependency-inclusive
-  linting encountered an existing warning in unchanged core code.
+  linting encountered an existing warning in unchanged core code; the latest core-only lint run
+  explicitly allows that `collapsible_if` category while denying other warnings.
 - The final CLI build passed. Real Herdr sessions exercised both legacy and parent-managed native
   children, model/context display, active-child inspection, exact parent draft restoration,
   reading-position restoration with new activity retained, normal completion, and confirmed
   turn interruption. Fixture inputs remained unchanged; owned test sleepers were cleaned up.
+- The latest live session verified one-gesture direct switching, assignment replacement on a
+  follow-up, caption retention after restart, automatic label reporting without a helper-specific
+  user request, and preservation of word editing with an unsent draft.
 
 The local CLI required a compatible signed companion from the installed ChatGPT application:
 the pinned V8 Intel artifact needed to build the host from source returned 404. This local runtime
@@ -57,7 +70,9 @@ prerequisite and the unrun Linux/Windows UI checks are documented in the
 [evaluation record](subagent-panel-evaluation.md) and
 [live evaluation](subagent-panel-live-evaluation.md). The
 [navigation evaluation](subagent-panel-navigation-evaluation.md) and its machine-readable source
-and executable hashes document the follow-up increment.
+and executable hashes document the navigation increment. The latest
+[assignment evaluation](subagent-panel-assignment-evaluation.md) records the metadata and direct
+navigation changes with a separate source/binary manifest.
 
 The intent is to share the behavior, implementation observations, and evidence through the issue
 tracker in accordance with the current contribution policy. The fork is an implementation

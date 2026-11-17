@@ -5919,6 +5919,13 @@ class SubAgentActivityThreadItem(BaseModel):
             description="Unix timestamp in milliseconds when the item started, if recorded.",
         ),
     ] = None
+    task_summary: Annotated[
+        str | None,
+        Field(
+            alias="taskSummary",
+            description="Short current assignment supplied by the parent, separate from the instruction body.",
+        ),
+    ] = None
     type: Annotated[Literal["subAgentActivity"], Field(title="SubAgentActivityThreadItemType")]
 
 

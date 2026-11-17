@@ -94,6 +94,7 @@ pub(super) async fn handle_message_string_tool(
         &session,
         &turn,
         SubAgentActivityItem {
+            task_summary: None,
             model: None,
             reasoning_effort: None,
             id: call_id,

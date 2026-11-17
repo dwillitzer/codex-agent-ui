@@ -38,7 +38,13 @@ impl ToolExecutor<ToolInvocation> for Handler {
     }
 
     fn spec(&self) -> ToolSpec {
-        create_spawn_agent_tool_v2(self.options.clone(), self.description_override.as_deref())
+        let mut options = self.options.clone();
+        let assignment_hint = "After a successful spawn, call agent_ui.set_assignment with the canonical task name and a short human-facing assignment summary. Update that summary after each new followup_task assignment too. This metadata call does not send agent input.";
+        options.usage_hint_text = Some(match options.usage_hint_text {
+            Some(existing) => format!("{existing}\n{assignment_hint}"),
+            None => assignment_hint.to_owned(),
+        });
+        create_spawn_agent_tool_v2(options, self.description_override.as_deref())
     }
 
     fn handle<'a>(&'a self, invocation: ToolInvocation) -> codex_tools::ToolExecutorFuture<'a>
@@ -163,6 +169,7 @@ async fn handle_spawn_agent(
         &session,
         turn,
         SubAgentActivityItem {
+            task_summary: None,
             model: Some(agent_snapshot.model.clone()),
             reasoning_effort: agent_snapshot.reasoning_effort.clone(),
             id: call_id,

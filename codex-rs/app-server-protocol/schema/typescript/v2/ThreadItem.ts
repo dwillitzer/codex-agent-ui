@@ -140,6 +140,10 @@ reasoningEffort: ReasoningEffort | null,
  */
 agentsStates: { [key in string]?: CollabAgentState }, } | { "type": "subAgentActivity",
 /**
+ * Short current assignment supplied by the parent, separate from the instruction body.
+ */
+taskSummary?: string,
+/**
  * Resolved model at sub-agent creation; absent from older records and other activities.
  */
 model: string | null,

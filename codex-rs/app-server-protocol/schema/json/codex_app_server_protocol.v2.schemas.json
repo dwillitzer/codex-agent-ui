@@ -22153,6 +22153,13 @@
               ],
               "description": "Resolved reasoning effort at sub-agent creation, when known."
             },
+            "taskSummary": {
+              "description": "Short current assignment supplied by the parent, separate from the instruction body.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "type": {
               "enum": [
                 "subAgentActivity"

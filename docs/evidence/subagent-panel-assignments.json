@@ -1,0 +1,376 @@
+{
+  "recordedAt": "2026-11-17T11:07:41.840Z",
+  "implementationBase": "1cac9909e4fdee19543c2fc2aac4478a307fecf8",
+  "branch": "feat/parent-agent-panel",
+  "platform": "x86_64-apple-darwin",
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13) (Homebrew)",
+  "sourceSha256": {
+    "codex-rs/analytics/src/tests/suite/turns/events_tests.rs": "e88cf4f06941e830bdd68671e5be8883eb1e724b957a09b7dcadf5b3ee230c2a",
+    "codex-rs/app-server-protocol/schema/json/ServerNotification.json": "47b3f2d0e4cc999f4a49caf09fde5d1bd2002eaf0116367d9a78c6c143cd55b7",
+    "codex-rs/app-server-protocol/schema/json/codex_app_server_protocol.schemas.json": "d2a7fddfa5103feb337dcd8a6e693169a1efe3059325c6b80a38cff40ca6a6a2",
+    "codex-rs/app-server-protocol/schema/json/codex_app_server_protocol.v2.schemas.json": "4c62237c1578339c71ab4bfd0dd6db7002817afbdf813a1686023572ea3390ce",
+    "codex-rs/app-server-protocol/schema/json/v2/ItemCompletedNotification.json": "23006e3747f9b14a57950c3ba60aa6fb95161ff187291545ef62880df27ca241",
+    "codex-rs/app-server-protocol/schema/json/v2/ItemStartedNotification.json": "8e59f439bb8006a93d8fab726c5c863f92095489a5e75bf05f7c4702373bff28",
+    "codex-rs/app-server-protocol/schema/json/v2/ReviewStartResponse.json": "d63c6e54ab7a1695cdec230601b84f18cacd128246d85ec9df5981dbfb5fc188",
+    "codex-rs/app-server-protocol/schema/json/v2/ThreadForkResponse.json": "acd142f46167f617e6fa1bc0b1103ffe5e0b3e0944db796f39c019b3aaf9de26",
+    "codex-rs/app-server-protocol/schema/json/v2/ThreadItemsListResponse.json": "d52a0538b0e8a2bdf5dc319d7ebc8797e506daf19b6c43857271979338fe08fe",
+    "codex-rs/app-server-protocol/schema/json/v2/ThreadListResponse.json": "f476205543ea49b5574a18285ac476811c1c5da15ce038831106985ede2fee1f",
+    "codex-rs/app-server-protocol/schema/json/v2/ThreadMetadataUpdateResponse.json": "907688ee4a3d4671921a931bde94697edd7f664230e928e8ebd3c058328cec79",
+    "codex-rs/app-server-protocol/schema/json/v2/ThreadReadResponse.json": "2754a8ad1d2a627cbe32053eb7a34335666425d761ec7e7a1ba5bf6a55aecdc6",
+    "codex-rs/app-server-protocol/schema/json/v2/ThreadResumeResponse.json": "799516f997f735d9fb0b4646c1f1f25d6276f258990c3059231bcaa671bb304c",
+    "codex-rs/app-server-protocol/schema/json/v2/ThreadRevertResponse.json": "85f46a67fd75ff39006c435a9e09e7c2e101d53f5f158780de1767ba38614ab4",
+    "codex-rs/app-server-protocol/schema/json/v2/ThreadStartResponse.json": "12ca26526cc2023df859e288be7b341510c2d3b67b6b21f8802d65f472475dec",
+    "codex-rs/app-server-protocol/schema/json/v2/ThreadStartedNotification.json": "8228707dffb0b2aa2334942fd3c74e19cb610daa3ada6f80c579588bf035e2b4",
+    "codex-rs/app-server-protocol/schema/json/v2/ThreadTurnsListResponse.json": "d605ed6164f960c103c951e91c2b715e486a8d26ab765889ecac31503359b6ca",
+    "codex-rs/app-server-protocol/schema/json/v2/ThreadUnarchiveResponse.json": "d74bca4aecbdc60a0231677a2f1bf7ceb32e460565d97ee6dbc55408394bfe78",
+    "codex-rs/app-server-protocol/schema/json/v2/TurnCompletedNotification.json": "4d470f49b7987863ae6f0f5231d3ba783271ede6995f62b5761c96b36c931290",
+    "codex-rs/app-server-protocol/schema/json/v2/TurnStartResponse.json": "28bb4bb37a5de78f409a3b5404ea9a6af8117b7b83b261640ad6312050aa8f8a",
+    "codex-rs/app-server-protocol/schema/json/v2/TurnStartedNotification.json": "4f434a64e39985654cef495a3e4a3207e4689cc4b568a8a593f9477107792ff1",
+    "codex-rs/app-server-protocol/schema/precomputed/app-server-exports-experimental.json.zst": "9d042dd5a2de2d01057e05021ce9b3aaf489d007e373d3d73a5dd5a95885a367",
+    "codex-rs/app-server-protocol/schema/precomputed/app-server-exports-stable.json.zst": "bb8c9a6a607c7fc6f3f0ffdb0a97344d8c741146119c65c5e38c4fa571a3a57e",
+    "codex-rs/app-server-protocol/schema/typescript/v2/ThreadItem.ts": "22881ec15a14dcb92778e3d5ccb08fd9d8ffe90b61becdb732ec3b97f02c2dda",
+    "codex-rs/app-server-protocol/src/protocol/event_mapping.rs": "acb9f355e215da5ecbffef0ef0e540d3b1724390021a7849fcc6745745cc84b5",
+    "codex-rs/app-server-protocol/src/protocol/thread_history.rs": "73e9310063ad6fb98746ada05e4ceb8e3a6392a2af08191c27f5822642c83db1",
+    "codex-rs/app-server-protocol/src/protocol/v2/item.rs": "1bfaca2b46c13860fbb7776068af52ae6f700df7c956cd93f14ab230c0ccac86",
+    "codex-rs/app-server-protocol/src/protocol/v2/tests.rs": "dc26c1762689824710e48456c62e6b0b168b853c1eca5c8949ebcd0481a22976",
+    "codex-rs/app-server/src/bespoke_event_handling.rs": "64abb6a5b8ee614ca05e10ef7c9bfd050ac140dbf15c5bd1e23e0ab492996687",
+    "codex-rs/core/src/agent/control/completion.rs": "9b2d2a7a4cddc924c5c17a0063c127754a5a7661294ea6a6bc65dd25a4f15548",
+    "codex-rs/core/src/realtime_history_tests.rs": "68725c2254b2f0d5f5094d117aec70f84ac55fd60dfc2ad551fc4248a904b1e1",
+    "codex-rs/core/src/session/tests.rs": "fe454ee7c1e0132763cf9b433c53258ab1195df0a1d09bc73bc563046024c1bf",
+    "codex-rs/core/src/tools/handlers/multi_agents_spec_tests.rs": "f59389b76bc3f240f02dfe059a55467297b298f2921109ebf435a334cd4f14f0",
+    "codex-rs/core/src/tools/handlers/multi_agents_v2.rs": "783bf4c101d70b34dd4b07218469d0f2e01ca1560e10bc3135523885c9bfae6c",
+    "codex-rs/core/src/tools/handlers/multi_agents_v2/assignment.rs": "6927d8d984f2596e0a7d20008425f3f1e4c1ceedfaa9b256fca9a9c3dc0ffa56",
+    "codex-rs/core/src/tools/handlers/multi_agents_v2/interrupt_agent.rs": "348e92202fb2b5e0b00e8157791bb683ddbea4f8f30bfd399fd807cd0195fbe9",
+    "codex-rs/core/src/tools/handlers/multi_agents_v2/message_tool.rs": "00594db65fbc7d2e7e42f09eddd8d5719a269cda590af500db404044c4d9bb26",
+    "codex-rs/core/src/tools/handlers/multi_agents_v2/spawn.rs": "e0b17587f9f77fe58a1d8e308fea9f4faef56d2cd6b1e48984b82160dc63f80a",
+    "codex-rs/core/src/tools/spec_plan.rs": "aad1e7420ef00d90214b3e3bf3c71b4f016dcc211c03b3ba724390819af8800f",
+    "codex-rs/core/src/tools/spec_plan_tests.rs": "154a4ee472939c3d4681014f69e017d05d8b3399c57474b73b7368048c647e1f",
+    "codex-rs/core/tests/suite/subagent_notifications.rs": "2c51f9bc44423449c1f85225bb723bded559e14ce1b12cfa27c870a52240306d",
+    "codex-rs/protocol/src/items.rs": "a3e55113796e54144c8e1ea1875c339b4c74c8fd66fdf32dae5256180cd6c149",
+    "codex-rs/protocol/src/legacy_events.rs": "30d3dd441f15b60dd8d94edff1d97977f5262a226cbc33bbc7f334025c1dead9",
+    "codex-rs/protocol/src/protocol.rs": "95756d574d4c55231e96324152b5572be2329627d21866d9adf86d15dc77e98f",
+    "codex-rs/rollout-trace/src/protocol_event_tests.rs": "a8173fe5451ec89b07876beff49d5a206a636a0df41fa501a8bab8f11f6f955b",
+    "codex-rs/thread-store/src/local/rollout_migration/legacy_event.rs": "81b04a811d6734d23b338a361042d8ae7ce22cad1b41f29e6ab18452cd13b5de",
+    "codex-rs/tui/src/app/agent_panel.rs": "ad36772466dc93eb37e66cc4810f3432976ccb88ee1a0c01b4e9c7d56cefc2eb",
+    "codex-rs/tui/src/app/session_lifecycle.rs": "5aa5c0fe4649979c689f490dbbaed4624d008218710f0bfb356c91fdd2012fe1",
+    "codex-rs/tui/src/app/tests.rs": "48ac5921c1a6fc8d68d6c8e7a624012678dedb92204dabe6ba301598b22f9935",
+    "codex-rs/tui/src/app/tests/agent_panel_tests.rs": "36d1f6f0c710d34655f865d4116a73a0a9013a50c14a2863095743abbd7a503c",
+    "codex-rs/tui/src/app/thread_routing.rs": "ee3955b6cd332ef690694bcd769082940a3219a62f276774a1b2a51d862320ae",
+    "codex-rs/tui/src/bottom_pane/subagent_panel.rs": "2659b3e1ec5dbebc832d64395351c1ebfec62d4406323f8fe1afe57d30d5f7c4",
+    "codex-rs/tui/src/chatwidget/tests/app_server.rs": "e455330c6c86d7be388a0e41ceb2923d1506797bc17f300366fbc051defaa216",
+    "codex-rs/tui/src/chatwidget/tests/subagent_activity_tests.rs": "987a0c8bb9a113c810a64ff34609cdd529a1d78ae9157a578cbd27bccf2496e6",
+    "codex-rs/tui/src/multi_agents.rs": "c5f5afb6c010e2774c6e5dd578c563ad01f984a62a3ca8cd161e8ed805944dff",
+    "codex-rs/tui/src/thread_transcript/other_items_tests.rs": "d465094f652d62d035bff1f8b3a7c364310c0c750fa8bc68f6c907a9542ccd97",
+    "scripts/evaluate-subagent-panel.mjs": "84b917f1d5fbf27f5bb208df7ddcc03d34bf5a115ce992942b2b69c1f78aa04d",
+    "sdk/python/src/openai_codex/generated/v2_all.py": "c49d52ea406421beb798015afe14e410a48d63f48eb9c7e589475baaf70c013c"
+  },
+  "executable": {
+    "version": "codex-cli 0.0.0",
+    "sha256": "70f7a400f500220e399f78d145dc2ead0a2d139f23fdeca6320ab2a91fc40b71"
+  },
+  "runtimeCompanion": {
+    "mode": "explicit-companion",
+    "program": "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex-code-mode-host",
+    "sha256": "79a93adf3878978f076702e87fa3d91af490e00b8d8ebdc07770ef975c060879"
+  },
+  "sdkContractReport": {
+    "tests": 10,
+    "failures": 0,
+    "errors": 0,
+    "junitSha256": "1e75f8c07369debed4936bd0785e1b03039a86cf3f8c6282bb8742e07848cdc2"
+  },
+  "pipeline": [
+    {
+      "name": "format",
+      "program": "rustup",
+      "args": [
+        "run",
+        "nightly",
+        "cargo",
+        "fmt",
+        "-p",
+        "codex-protocol",
+        "-p",
+        "codex-app-server-protocol",
+        "-p",
+        "codex-core",
+        "-p",
+        "codex-tui",
+        "-p",
+        "codex-app-server",
+        "-p",
+        "codex-thread-store",
+        "-p",
+        "codex-rollout-trace"
+      ],
+      "code": 0
+    },
+    {
+      "name": "protocol",
+      "program": "cargo",
+      "args": [
+        "test",
+        "--locked",
+        "-p",
+        "codex-protocol",
+        "--lib"
+      ],
+      "code": 0
+    },
+    {
+      "name": "schemas",
+      "program": "python3",
+      "args": [
+        "app-server-protocol/scripts/write_schema_fixtures.py"
+      ],
+      "code": 0
+    },
+    {
+      "name": "experimental-schemas",
+      "program": "python3",
+      "args": [
+        "app-server-protocol/scripts/write_schema_fixtures.py",
+        "--experimental"
+      ],
+      "code": 0
+    },
+    {
+      "name": "wire-tests",
+      "program": "cargo",
+      "args": [
+        "test",
+        "--locked",
+        "-p",
+        "codex-app-server-protocol",
+        "--lib"
+      ],
+      "code": 0
+    },
+    {
+      "name": "cli",
+      "program": "cargo",
+      "args": [
+        "build",
+        "--locked",
+        "-p",
+        "codex-cli",
+        "--bin",
+        "codex"
+      ],
+      "code": 0
+    },
+    {
+      "name": "core-tests",
+      "program": "cargo",
+      "args": [
+        "nextest",
+        "run",
+        "--no-fail-fast",
+        "--locked",
+        "-p",
+        "codex-core",
+        "--lib",
+        "--profile",
+        "local",
+        "--test-threads",
+        "4",
+        "-E",
+        "test(tools::handlers::multi_agents) | test(tools::spec_plan) | test(sub_agent_activity)"
+      ],
+      "code": 0
+    },
+    {
+      "name": "panel-tests",
+      "program": "cargo",
+      "args": [
+        "test",
+        "--locked",
+        "-p",
+        "codex-tui",
+        "--lib",
+        "subagent_panel",
+        "--",
+        "--test-threads=1"
+      ],
+      "code": 0
+    },
+    {
+      "name": "assignment-tests",
+      "program": "node",
+      "args": [
+        "scripts/subagent-panel-test-runner.mjs",
+        "codex-rs/target/debug/deps/codex_tui-6832e252f4e4635c",
+        "agent_assignment",
+        "--test-threads=1"
+      ],
+      "code": 0
+    },
+    {
+      "name": "state-tests",
+      "program": "node",
+      "args": [
+        "scripts/subagent-panel-test-runner.mjs",
+        "codex-rs/target/debug/deps/codex_tui-6832e252f4e4635c",
+        "agent_panel_tests",
+        "--test-threads=1"
+      ],
+      "code": 0
+    },
+    {
+      "name": "navigation-tests",
+      "program": "node",
+      "args": [
+        "scripts/subagent-panel-test-runner.mjs",
+        "codex-rs/target/debug/deps/codex_tui-6832e252f4e4635c",
+        "agents_navigation",
+        "--test-threads=1"
+      ],
+      "code": 0
+    },
+    {
+      "name": "tui-clippy",
+      "program": "cargo",
+      "args": [
+        "clippy",
+        "--locked",
+        "-p",
+        "codex-tui",
+        "--all-targets",
+        "--no-deps",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "code": 0
+    }
+  ],
+  "counts": {
+    "protocol": 388,
+    "wire": 326,
+    "core": 149,
+    "ui": 38,
+    "threadSwitchRegression": 20,
+    "sdkContracts": 10,
+    "selectedDistinctTotal": 931
+  },
+  "finalChecks": [
+    {
+      "name": "core-agent-clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "-p",
+        "codex-core",
+        "--lib",
+        "--no-deps",
+        "--",
+        "-D",
+        "warnings",
+        "-A",
+        "clippy::collapsible_if"
+      ],
+      "startedAt": "2026-11-17T10:37:09.769Z",
+      "logfile": "/Users/devops/Projects/research/codex-agent-ui/.dev/assignment-eval/final-checks/core-agent-clippy.log",
+      "signal": null,
+      "exitCode": 0,
+      "finishedAt": "2026-11-17T10:47:08.523Z"
+    },
+    {
+      "name": "thread-switch-regression",
+      "command": [
+        "cargo",
+        "nextest",
+        "run",
+        "--locked",
+        "-p",
+        "codex-tui",
+        "--lib",
+        "--profile",
+        "local",
+        "--test-threads",
+        "4",
+        "--no-fail-fast",
+        "-E",
+        "test(open_agent_picker) | test(select_uncached_agent_thread) | test(replay_thread_snapshot_restores_draft) | test(embedded_session_switch_routes_background_approval_and_restores_draft) | test(agents_overview_stop_) | test(transcript_view::bookmark) | test(replace_chat_widget)",
+        "--config",
+        "target.x86_64-apple-darwin.runner=[\"/usr/local/Cellar/node/26.13.0_2/bin/node\",\"/Users/devops/Projects/research/codex-agent-ui/scripts/subagent-panel-test-runner.mjs\"]"
+      ],
+      "startedAt": "2026-11-17T10:47:08.524Z",
+      "logfile": "/Users/devops/Projects/research/codex-agent-ui/.dev/assignment-eval/final-checks/thread-switch-regression.log",
+      "signal": null,
+      "exitCode": 0,
+      "finishedAt": "2026-11-17T11:00:11.674Z"
+    }
+  ],
+  "finalBinaryChecks": [
+    {
+      "name": "whitespace",
+      "command": [
+        "git",
+        "diff",
+        "HEAD",
+        "--check"
+      ],
+      "startedAt": "2026-11-17T10:46:09.662Z",
+      "logfile": "/Users/devops/Projects/research/codex-agent-ui/.dev/assignment-eval/final-binary/whitespace.log",
+      "signal": null,
+      "exitCode": 0,
+      "finishedAt": "2026-11-17T10:46:09.935Z"
+    },
+    {
+      "name": "cli-build",
+      "command": [
+        "cargo",
+        "build",
+        "--locked",
+        "-p",
+        "codex-cli",
+        "--bin",
+        "codex"
+      ],
+      "startedAt": "2026-11-17T10:46:09.936Z",
+      "logfile": "/Users/devops/Projects/research/codex-agent-ui/.dev/assignment-eval/final-binary/cli-build.log",
+      "signal": null,
+      "exitCode": 0,
+      "finishedAt": "2026-11-17T10:59:21.013Z"
+    },
+    {
+      "name": "cli-version",
+      "command": [
+        "/Users/devops/Projects/research/codex-agent-ui/codex-rs/target/debug/codex",
+        "--version"
+      ],
+      "startedAt": "2026-11-17T10:59:21.014Z",
+      "logfile": "/Users/devops/Projects/research/codex-agent-ui/.dev/assignment-eval/final-binary/cli-version.log",
+      "signal": null,
+      "exitCode": 0,
+      "finishedAt": "2026-11-17T10:59:44.641Z"
+    }
+  ],
+  "live": {
+    "directNextWithoutEnter": true,
+    "directParentWithoutEnter": true,
+    "spawnAssignmentLines": true,
+    "followupReplacement": true,
+    "coldResumePreserved": true,
+    "unresolvableMetadataDidNotWake": true,
+    "automaticCaption": true,
+    "draftWordMotionPreserved": true,
+    "finalIdle": true,
+    "fixturesUnchanged": true
+  },
+  "compatibility": {
+    "nativeParameterDefinitionsMatchBase": true,
+    "optionalActivityField": true,
+    "missingMetadataReadable": true
+  },
+  "notes": [
+    "The native API rejected extending reserved collaboration parameter schemas. Those changes were restored; metadata uses a separate agent_ui namespace.",
+    "One passing core test was marked leaky by Nextest: build_agent_resume_config_clears_base_instructions.",
+    "Core lint passed with the pre-existing collapsible_if lint category allowed; strict TUI lint passed with warnings denied.",
+    "Current-group test counts do not imply a full core or TUI suite replay.",
+    "Runtime-host source build remains blocked by a missing Intel V8 artifact; the compatible locally signed application companion was used and is not redistributed.",
+    "Linux/Windows interactive checks and agent-lifetime pause/kill controls are outside this increment."
+  ]
+}

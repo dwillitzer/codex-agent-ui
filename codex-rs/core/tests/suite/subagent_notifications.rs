@@ -2957,6 +2957,7 @@ async fn plaintext_multi_agent_v2_completion_sends_agent_message(
         assert_eq!(
             completed_item,
             &SubAgentActivityItem {
+                task_summary: None,
                 model: None,
                 reasoning_effort: None,
                 id: format!("subagent-completed-{child_turn_id}"),
@@ -3275,6 +3276,7 @@ async fn multi_agent_v2_peer_followup_completion_notifies_initiating_turn(
             requester_thread_id,
             requester_turn_id,
             SubAgentActivityItem {
+                task_summary: None,
                 model: None,
                 reasoning_effort: None,
                 id: format!("subagent-completed-{worker_followup_turn_id}"),

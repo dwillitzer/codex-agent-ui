@@ -18,6 +18,21 @@ use codex_protocol::ThreadId;
 use std::time::Duration;
 use std::time::Instant;
 
+fn assignment_line(text: &str) -> Option<String> {
+    let text: String = text
+        .chars()
+        .filter(|c| !c.is_control() || c.is_whitespace())
+        .collect();
+    let text: String = text
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .chars()
+        .take(80)
+        .collect();
+    (!text.is_empty()).then_some(text)
+}
+
 pub(super) struct AgentPanelBookmark(pub(crate) crate::transcript_view::TranscriptBookmark);
 
 impl std::fmt::Debug for AgentPanelBookmark {
@@ -33,6 +48,7 @@ pub(super) struct AgentPanelDetails {
     pub model: Option<String>,
     pub usage: Option<ThreadTokenUsage>,
     pub task: String,
+    pub assignment: Option<String>,
     pub stale: bool,
     pub status: Option<String>,
     pub turn_id: Option<String>,
@@ -41,6 +57,13 @@ pub(super) struct AgentPanelDetails {
 }
 
 impl AgentPanelDetails {
+    pub(super) fn assignment_text(&self) -> &str {
+        self.assignment
+            .as_deref()
+            .or_else(|| (!self.task.is_empty()).then_some(self.task.as_str()))
+            .unwrap_or("Assignment unavailable")
+    }
+
     fn set_model(&mut self, model: String) {
         if self.model.as_ref() != Some(&model) {
             self.usage = None;
@@ -145,6 +168,92 @@ impl AgentPanelDetails {
 }
 
 impl App {
+    /// Direct cycling follows the same parent-scoped, stable order as the visible panel.
+    pub(super) fn panel_adjacent_thread_id(
+        &self,
+        direction: super::agent_navigation::AgentNavigationDirection,
+    ) -> Option<ThreadId> {
+        let root = self.primary_thread_id?;
+        let current = self.current_displayed_thread_id()?;
+        let ids: Vec<_> = self
+            .agent_navigation
+            .visible_threads()
+            .into_iter()
+            .map(|(id, _)| id)
+            .filter(|id| {
+                *id == root
+                    || self
+                        .agent_navigation
+                        .panel_details
+                        .get(id)
+                        .is_some_and(|d| d.root == Some(root))
+            })
+            .collect();
+        if ids.len() <= 1 {
+            return None;
+        }
+        let Some(index) = ids.iter().position(|id| *id == current) else {
+            return Some(root);
+        };
+        let index = match direction {
+            super::agent_navigation::AgentNavigationDirection::Next => (index + 1) % ids.len(),
+            super::agent_navigation::AgentNavigationDirection::Previous => {
+                (index + ids.len() - 1) % ids.len()
+            }
+        };
+        Some(ids[index])
+    }
+
+    /// Rehydrate the latest available assignment from retained parent history, without replaying
+    /// lifecycle state or replacing newer live metadata with an older page.
+    pub(super) fn restore_agent_assignments(
+        &mut self,
+        source: ThreadId,
+        turns: &[codex_app_server_protocol::Turn],
+    ) {
+        let Some(root) = self.primary_thread_id else {
+            return;
+        };
+        if source != root
+            && !self
+                .agent_navigation
+                .panel_details
+                .get(&source)
+                .is_some_and(|d| d.root == Some(root))
+        {
+            return;
+        }
+        let mut latest = std::collections::HashMap::new();
+        for item in turns
+            .iter()
+            .flat_map(codex_app_server_protocol::Turn::item_payloads)
+        {
+            if let ThreadItemPayload::SubAgentActivity {
+                agent_thread_id,
+                task_summary: Some(summary),
+                ..
+            } = item
+                && let Ok(child) = ThreadId::from_string(agent_thread_id)
+                && child != root
+                && let Some(summary) = assignment_line(summary)
+            {
+                latest.insert(child, summary);
+            }
+        }
+        for (child, summary) in latest {
+            let details = self
+                .agent_navigation
+                .panel_details
+                .entry(child)
+                .or_default();
+            if details.root.is_none_or(|known| known == root) {
+                // Forked history can contain another parent's activities. Only live lineage or
+                // ancestor-filtered discovery may establish panel membership.
+                details.assignment.get_or_insert(summary);
+            }
+        }
+    }
+
     pub(super) fn can_stop_agent_panel_turn(
         &self,
         thread_id: ThreadId,
@@ -179,13 +288,11 @@ impl App {
         if let Some(model) = &thread.model {
             details.set_model(model.clone());
         }
-        if !thread.preview.is_empty() {
-            details.task = thread
-                .preview
-                .split_whitespace()
-                .collect::<Vec<_>>()
-                .join(" ");
-        }
+        details.task = thread
+            .name
+            .as_deref()
+            .and_then(assignment_line)
+            .unwrap_or_default();
         details.status_changed(&thread.status);
     }
 
@@ -207,6 +314,7 @@ impl App {
             | ServerNotification::TurnCompleted(_)
             | ServerNotification::ThreadClosed(_)
             | ServerNotification::ThreadReverted(_) => {}
+            ServerNotification::ThreadNameUpdated(_) => {}
             _ if matches!(
                 item,
                 Some(
@@ -251,10 +359,10 @@ impl App {
                 }
                 details.task = started
                     .thread
-                    .preview
-                    .split_whitespace()
-                    .collect::<Vec<_>>()
-                    .join(" ");
+                    .name
+                    .as_deref()
+                    .and_then(assignment_line)
+                    .unwrap_or_default();
                 details.status_changed(&started.thread.status);
             }
             self.resolve_agent_panel_lineage(root);
@@ -270,6 +378,7 @@ impl App {
         }
         if let Some(ThreadItemPayload::SubAgentActivity {
             agent_thread_id,
+            task_summary,
             model,
             kind,
             ..
@@ -282,7 +391,16 @@ impl App {
                 .entry(child)
                 .or_default();
             details.root = Some(root);
-            details.parent = Some(id);
+            // A follow-up sender need not be the agent's original spawning parent.
+            if matches!(
+                kind,
+                codex_app_server_protocol::SubAgentActivityKind::Started
+            ) {
+                details.parent.get_or_insert(id);
+            }
+            if let Some(summary) = task_summary.as_deref().and_then(assignment_line) {
+                details.assignment = Some(summary);
+            }
             if let Some(model) = model
                 && details.model.is_none()
             {
@@ -311,7 +429,6 @@ impl App {
         if let Some(ThreadItemPayload::CollabAgentToolCall {
             receiver_thread_ids,
             model,
-            prompt,
             tool,
             agents_states,
             ..
@@ -342,11 +459,6 @@ impl App {
                     && let Some(model) = model
                 {
                     details.set_model(model.clone());
-                }
-                if let Some(prompt) = prompt
-                    && matches!(tool, codex_app_server_protocol::CollabAgentTool::SpawnAgent)
-                {
-                    details.task = prompt.split_whitespace().collect::<Vec<_>>().join(" ");
                 }
                 if let Some(state) = agents_states.get(&child.to_string()) {
                     use codex_app_server_protocol::CollabAgentStatus;
@@ -384,6 +496,13 @@ impl App {
                 }
                 ServerNotification::ThreadSettingsUpdated(settings) => {
                     details.set_model(settings.thread_settings.model.clone());
+                }
+                ServerNotification::ThreadNameUpdated(name) => {
+                    details.task = name
+                        .thread_name
+                        .as_deref()
+                        .and_then(assignment_line)
+                        .unwrap_or_default();
                 }
                 ServerNotification::ModelRerouted(rerouted) => {
                     details.set_model(rerouted.to_model.clone());
@@ -476,7 +595,7 @@ impl App {
                     label: self.thread_label(id),
                     state: state.into(),
                     model_context: details.model_context(),
-                    task: details.task.clone(),
+                    task: details.assignment_text().to_owned(),
                     active,
                     current: current == Some(id),
                     started: details.started,

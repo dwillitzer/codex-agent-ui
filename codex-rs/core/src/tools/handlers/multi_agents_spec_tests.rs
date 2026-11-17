@@ -41,6 +41,8 @@ fn spawn_agent_tool_v2_requires_task_name() {
     assert!(description.contains(SPAWN_AGENT_INHERITED_MODEL_GUIDANCE));
     assert!(properties.contains_key("task_name"));
     assert!(properties.contains_key("message"));
+    // These schemas are reserved by the model API; metadata belongs in agent_ui.
+    assert!(!properties.contains_key("task_summary"));
     assert_eq!(
         properties
             .get("message")
@@ -307,6 +309,8 @@ fn followup_task_tool_requires_message_and_has_no_output_schema() {
         .expect("followup_task should use object params");
     assert!(properties.contains_key("target"));
     assert!(properties.contains_key("message"));
+    // These schemas are reserved by the model API; metadata belongs in agent_ui.
+    assert!(!properties.contains_key("task_summary"));
     assert_eq!(
         properties
             .get("message")

@@ -3218,6 +3218,7 @@ async fn code_mode_only_can_expose_namespaced_multi_agent_v2_as_normal_tools() {
             "wait",
             "request_user_input",
             "agents",
+            "agent_ui",
             // Hosted Responses tool.
             "web_search",
         ]
@@ -3228,6 +3229,11 @@ async fn code_mode_only_can_expose_namespaced_multi_agent_v2_as_normal_tools() {
             .iter()
             .any(|name| name == "assign_task"),
         "expected assign_task to be absent from agents namespace"
+    );
+    assert!(
+        plan.namespace_function_names("agent_ui")
+            .iter()
+            .any(|name| name == "set_assignment")
     );
     for tool_name in [
         "spawn_agent",
@@ -3384,6 +3390,7 @@ async fn hosted_web_search_and_standalone_image_generation_follow_runtime_gates(
             "request_user_input",
             // Multi-agent v2 tools.
             MULTI_AGENT_V2_NAMESPACE,
+            "agent_ui",
             // Hosted Responses tools.
             "web_search",
         ]

@@ -128,9 +128,13 @@ impl SubagentPanel {
             .count();
         let children = self.rows.iter().filter(|row| !row.parent).count();
         let summary = format!(
-            "Agents: {active} active / {} · F6 select · /subagents {}",
+            "Agents: {active} active / {} · Alt+←/→ switch (empty prompt) · F6 list{}",
             children,
-            if self.collapsed { "expand" } else { "compact" },
+            if self.collapsed {
+                " · /subagents expand"
+            } else {
+                ""
+            },
         );
         let mut lines = vec![Line::from(truncate_text(&summary, width as usize)).dim()];
         if let Some(viewed) = self.rows.iter().find(|row| row.current && !row.parent) {
@@ -182,7 +186,7 @@ impl SubagentPanel {
                     format!(" · {}m{:02}s", secs / 60, secs % 60)
                 })
                 .unwrap_or_default();
-            let text = format!(
+            let mut text = format!(
                 "{}{} {} · {}{}",
                 if Some(row.id) == self.selected {
                     ">"
@@ -194,13 +198,13 @@ impl SubagentPanel {
                 row.state,
                 elapsed,
             );
+            if !row.parent && width >= 40 && !row.task.is_empty() {
+                text.push_str(" — ");
+                text.push_str(&row.task);
+            }
             lines.push(Line::from(truncate_text(&text, width as usize)));
             if width >= 40 {
-                let details = if row.task.is_empty() || width < 100 {
-                    format!("  {}", row.model_context)
-                } else {
-                    format!("  {} · {}", row.model_context, row.task)
-                };
+                let details = format!("  {}", row.model_context);
                 lines.push(Line::from(truncate_text(&details, width as usize)).dim());
             }
         }
@@ -271,11 +275,11 @@ mod tests {
             false,
         );
         insta::assert_snapshot!(render(&panel, 110), @"
-        Agents: 1 active / 2 · F6 select · /subagents compact
-         · /root/source-review · running · 1m14s
-          gpt-child · ctx 50% used (60K/108K) · Review source and report findings
-         · /root/tests · done · 1m14s
-          gpt-child · ctx 50% used (60K/108K) · Review source and report findings
+        Agents: 1 active / 2 · Alt+←/→ switch (empty prompt) · F6 list
+         · /root/source-review · running · 1m14s — Review source and report findings
+          gpt-child · ctx 50% used (60K/108K)
+         · /root/tests · done · 1m14s — Review source and report findings
+          gpt-child · ctx 50% used (60K/108K)
         ");
         assert!(panel.has_active_agents());
     }

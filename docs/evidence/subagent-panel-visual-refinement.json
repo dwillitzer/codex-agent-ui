@@ -1,0 +1,87 @@
+{
+  "date": "2026-11-17",
+  "platform": "Intel macOS",
+  "implementationBase": "aebe2cd53aa288f7651de3876951a34a0de6d697",
+  "branch": "feat/parent-agent-panel",
+  "sourceHashes": {
+    "codex-rs/tui/src/bottom_pane/subagent_panel.rs": "333d40949330cb6cead6df77b7f057987128b5e01461caf73d1ad193587d0724"
+  },
+  "executable": {
+    "version": "0.0.0",
+    "sha256": "b1c5cf072486f8ee3e5c6ab0b059b49db729bdafcfd238112172dbd79dab57d2"
+  },
+  "checks": [
+    {
+      "name": "focused-tests",
+      "program": "cargo",
+      "args": [
+        "nextest",
+        "run",
+        "--locked",
+        "-p",
+        "codex-tui",
+        "--lib",
+        "--profile",
+        "local",
+        "--test-threads",
+        "4",
+        "--no-fail-fast",
+        "-E",
+        "test(subagent_panel) | test(agent_panel_tests) | test(agents_navigation) | test(pending_thread_approvals) | test(inactive_thread_approval)"
+      ],
+      "code": 0
+    },
+    {
+      "name": "clippy",
+      "program": "cargo",
+      "args": [
+        "clippy",
+        "--locked",
+        "-p",
+        "codex-tui",
+        "--all-targets",
+        "--no-deps",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "code": 0
+    },
+    {
+      "name": "cli",
+      "program": "cargo",
+      "args": ["build", "--locked", "-p", "codex-cli", "--bin", "codex"],
+      "code": 0
+    }
+  ],
+  "tests": {
+    "passed": 55,
+    "failed": 0,
+    "skipped": 6198,
+    "runner": "Nextest isolated processes; temporary HOME; RUST_MIN_STACK=8388608",
+    "initialRun": "53 passed, 1 stale dot-glyph assertion failed; expectation corrected; intermediate 54 passed; final row-emphasis increment 55 passed"
+  },
+  "live": {
+    "workspace": "codex-ui-contrast-review",
+    "pane": "w3C:p1",
+    "modelTaskSubmitted": false,
+    "originalPaneUntouched": true,
+    "assertions": [
+      "Bold viewed Main has solid circle",
+      "Different bold keyboard-selected child has cursor and hollow circle",
+      "Remaining child is dim with hollow circle",
+      "All and Active tabs have bold reverse-video cyan attributes",
+      "Review ready on All with child highlighted"
+    ],
+    "captures": {
+      "selected.ansi": "b640453df6c4d4ffce326567701938c63fd2b81c7df0d19165bd2073ed7f6891",
+      "active.ansi": "ccdc673639b23b12aa9e2f78a858f8b9bdba4f265b7d49de7941c3dc6d9d86bb",
+      "review-ready.txt": "4f5a05f47854056d151243246962eb2c59f1316b863e305ddc017ec658f9547b"
+    }
+  },
+  "limits": [
+    "Resumed closed children; no new context/lifecycle measurement",
+    "No new full-suite or cross-platform run",
+    "Compatible signed companion host remains a local prerequisite"
+  ]
+}

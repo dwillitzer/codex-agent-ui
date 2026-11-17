@@ -14,9 +14,9 @@ For example (synthetic data):
 
 ```text
 Agents: 1 active / 2 · Alt+←/→ switch (empty prompt) · F6 list
- · /root/source-review · running · 1m14s — Audit retry validation
+ ○ /root/source-review · running · 1m14s — Audit retry validation
   review-model · ctx 50% used (60K/108K)
- · /root/tests · done · 0m42s — Run retry regression tests
+ ○ /root/tests · done · 0m42s — Run retry regression tests
   test-model · ctx 12% used (24K/108K)
 ```
 
@@ -33,9 +33,12 @@ Agents: 1 active / 2 · Alt+←/→ switch (empty prompt) · F6 list
   provides a command alternative.
 - While focused, Up/Down select in stable spawn order, Enter watches that thread, and Escape
   returns to the composer without interrupting work. Select Main to return to the parent. The
-  `>` cursor marks selection; `●` marks the transcript currently viewed. The panel scrolls its
-  bounded preview to keep the selected row visible, including when compacted.
-- While focused, `f` cycles **All / Active / Done / Failed**. The list and arrow-key selection
+  `>` cursor marks selection; `●` marks the transcript currently viewed, and `○` marks other
+  agents. Viewed and keyboard-selected rows are bold; other rows are dim. The panel scrolls
+  its bounded preview to keep the selected row visible, including
+  when compacted.
+- While focused, `f` cycles **All / Active / Done / Failed**. A bold, reverse-video cyan highlight
+  identifies the active tab, including at narrow widths. The list and arrow-key selection
   shrink to matches; Main remains selectable. Approvals stay Active with a waiting label, and
   a parent-visible notice remains even if another tab hides the affected agent. Filter state
   survives inspection within the parent session and resets for a different parent. See the
@@ -120,6 +123,8 @@ The [assignment evaluation](subagent-panel-assignment-evaluation.md) records dir
 current one-line summaries, schema compatibility, and the latest tests and live checks.
 The [status-filter evaluation](subagent-panel-status-filter-evaluation.md) records the subsequent
 All/Active/Done/Failed tabs, approval awareness, and 73 selected passing tests plus live checks.
+The [visual refinement evaluation](subagent-panel-visual-refinement-evaluation.md) records the
+subsequent hollow-circle markers and active-tab contrast checks.
 The upstream contribution policy currently accepts issue-based findings and
 design discussions rather than external code PRs. A tested fork and implementation reference can
 accompany [the existing feature request](https://github.com/openai/codex/issues/43148).

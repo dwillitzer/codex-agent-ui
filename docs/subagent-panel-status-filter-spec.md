@@ -3,6 +3,10 @@
 ## User interaction
 
 The focused agent bar has four status tabs, in order: **All, Active, Done, Failed**.
+The active tab uses a bold reverse-video cyan highlight; inactive tabs are dim. Narrow layouts
+retain the highlighted active label. The viewed transcript has a solid circle, other rows have
+hollow circles, and the independent keyboard selection cursor remains `>`.
+Viewed and keyboard-selected rows are bold; other agent rows are dim.
 Press `f` (or `F`) once to advance, wrapping from Failed to All. Holding the key does not
 advance repeatedly. Up/Down move through the filtered rows and Enter watches the selected
 thread. Escape returns focus to the composer without interrupting a task. Outside panel focus,

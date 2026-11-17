@@ -13,6 +13,7 @@ use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::Stylize;
 use ratatui::text::Line;
+use ratatui::text::Span;
 use ratatui::widgets::Paragraph;
 use std::time::Duration;
 use std::time::Instant;
@@ -261,24 +262,29 @@ impl SubagentPanel {
         );
         let mut lines = vec![Line::from(truncate_text(&summary, width as usize)).dim()];
         if !self.collapsed || self.focused() {
-            let tabs = AgentStatusFilter::ALL
-                .iter()
-                .map(|filter| {
+            let mut tabs = Vec::new();
+            if width < 40 {
+                tabs.push(
+                    Span::raw(format!(" {} {matching}/{children} ", self.filter.label()))
+                        .cyan()
+                        .reversed()
+                        .bold(),
+                );
+            } else {
+                for (index, filter) in AgentStatusFilter::ALL.iter().enumerate() {
+                    if index > 0 {
+                        tabs.push(Span::raw(" · ").dim());
+                    }
                     let label = format!("{} {}", filter.label(), self.count(*filter));
                     if *filter == self.filter {
-                        format!("[{label}]")
+                        tabs.push(Span::raw(format!("[{label}]")).cyan().reversed().bold());
                     } else {
-                        label
+                        tabs.push(Span::raw(label).dim());
                     }
-                })
-                .collect::<Vec<_>>()
-                .join(" · ");
-            let tabs = if width < 40 {
-                format!("{} {matching}/{children} · f filter", self.filter.label())
-            } else {
-                format!("{tabs} · f filter")
-            };
-            lines.push(Line::from(truncate_text(&tabs, width as usize)).cyan());
+                }
+            }
+            tabs.push(Span::raw(" · f filter").dim());
+            lines.push(Line::from(tabs));
         }
         if let Some(viewed) = self.rows.iter().find(|row| row.current && !row.parent) {
             lines.push(
@@ -337,7 +343,7 @@ impl SubagentPanel {
                 } else {
                     " "
                 },
-                if row.current { "●" } else { "·" },
+                if row.current { "●" } else { "○" },
                 row.label,
                 row.state,
                 elapsed,
@@ -346,7 +352,12 @@ impl SubagentPanel {
                 text.push_str(" — ");
                 text.push_str(&row.task);
             }
-            lines.push(Line::from(truncate_text(&text, width as usize)));
+            let line = Line::from(truncate_text(&text, width as usize));
+            lines.push(if row.current || Some(row.id) == self.selected {
+                line.bold()
+            } else {
+                line.dim()
+            });
             if width >= 40 {
                 let details = format!("  {}", row.model_context);
                 lines.push(Line::from(truncate_text(&details, width as usize)).dim());
@@ -431,12 +442,80 @@ mod tests {
         insta::assert_snapshot!(render(&panel, 110), @"
         Agents: 1 active / 2 · Alt+←/→ switch (empty prompt) · F6 list
         [All 2] · Active 1 · Done 1 · Failed 0 · f filter
-         · /root/source-review · running · 1m14s — Review source and report findings
+         ○ /root/source-review · running · 1m14s — Review source and report findings
           gpt-child · ctx 50% used (60K/108K)
-         · /root/tests · done · 1m14s — Review source and report findings
+         ○ /root/tests · done · 1m14s — Review source and report findings
           gpt-child · ctx 50% used (60K/108K)
         ");
         assert!(panel.has_active_agents());
+    }
+
+    #[test]
+    fn active_filter_has_high_contrast_at_wide_and_narrow_widths() {
+        use ratatui::style::Color;
+        use ratatui::style::Modifier;
+
+        let mut panel = SubagentPanel::default();
+        panel.set(vec![row("running-agent", true)], false);
+        for filter in AgentStatusFilter::ALL {
+            panel.set_filter(filter);
+            for width in [30, 100] {
+                let mut buffer = Buffer::empty(Rect::new(0, 0, width, panel.desired_height(width)));
+                panel.render(buffer.area, &mut buffer);
+                let start = if width < 40 {
+                    1
+                } else {
+                    let text = render(&panel, width);
+                    let line = text.lines().nth(1).unwrap();
+                    line[..line.find('[').unwrap()].chars().count() as u16
+                };
+                let cell = &buffer[(start, 1)];
+                assert_eq!(cell.fg, Color::Cyan);
+                assert!(cell.modifier.contains(Modifier::REVERSED | Modifier::BOLD));
+                if width >= 40 {
+                    let line = render(&panel, width);
+                    let line = line.lines().nth(1).unwrap();
+                    let other = if filter == AgentStatusFilter::All {
+                        "Active"
+                    } else {
+                        "All"
+                    };
+                    let other = line[..line.find(other).unwrap()].chars().count() as u16;
+                    assert!(!buffer[(other, 1)].modifier.contains(Modifier::REVERSED));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn row_emphasis_distinguishes_viewed_selected_and_other_agents() {
+        use ratatui::style::Modifier;
+
+        let mut viewed = row("viewed-agent", true);
+        viewed.current = true;
+        let mut panel = SubagentPanel::default();
+        panel.set(
+            vec![
+                viewed,
+                row("selected-agent", true),
+                row("other-agent", true),
+            ],
+            false,
+        );
+        panel.focus();
+        panel.move_selection(true);
+        let lines = panel.lines(100);
+        for (label, marker, modifier) in [
+            ("viewed-agent", " ●", Modifier::BOLD),
+            ("selected-agent", ">○", Modifier::BOLD),
+            ("other-agent", " ○", Modifier::DIM),
+        ] {
+            let line = lines
+                .iter()
+                .find(|line| line.to_string().starts_with(&format!("{marker} {label}")))
+                .expect("agent row with distinct view and selection markers");
+            assert!(line.style.add_modifier.contains(modifier));
+        }
     }
 
     #[test]
@@ -623,7 +702,7 @@ mod tests {
         panel.set(rows.clone(), true);
         assert_eq!(panel.selected(), selected);
         let text = render(&panel, 100);
-        assert!(text.contains(">· agent-7 · done"), "{text}");
+        assert!(text.contains(">○ agent-7 · done"), "{text}");
         assert!(!text.contains("agent-1"));
         panel.move_selection(true);
         assert_eq!(panel.selected(), Some(rows[0].id));

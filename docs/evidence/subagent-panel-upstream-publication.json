@@ -1,0 +1,20 @@
+{
+  "repository": "openai/codex",
+  "issue": 43148,
+  "commentId": "6961263780",
+  "commentUrl": "https://github.com/openai/codex/issues/43148#issuecomment-6961263780",
+  "author": "dwillitzer",
+  "verifiedAt": "2026-11-17T21:19:45.019Z",
+  "attachmentUrl": "https://github.com/user-attachments/assets/4772121c-c039-4dbf-9260-47a68f8332aa",
+  "recordedSourceCommit": "7a455536e48e8a7170133feeea52e2f52a9d99c7",
+  "verification": {
+    "exactBodyReadBackViaGitHub": true,
+    "browserRenderedComment": true,
+    "browserRenderedVideo": true,
+    "playbackObservedSeconds": 9.6929,
+    "attachmentDraftCleared": true
+  },
+  "relatedWorkAcknowledged": "https://github.com/openai/codex/issues/52853#issuecomment-6110703633",
+  "postedBodySha256": "0261a6554500cea1ed303f87f0c1faf1f920e5015436b796578f0dba7fdae981",
+  "localVideoSha256": "f392ec081316ff58c375a312348fbc3228aca7fcf84aafe45450b7f33d167fce"
+}

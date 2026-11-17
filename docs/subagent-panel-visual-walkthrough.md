@@ -83,7 +83,9 @@ model task was submitted for the unsent draft.
 
 The [machine-readable evidence](evidence/subagent-panel-visual-walkthrough.json) records
 source/executable/media hashes, commands and exits, fixture hashes, and the recording edits.
-The [prepared upstream report](subagent-panel-upstream-report.md) targets the existing
-[open request](https://github.com/openai/codex/issues/43148) and has not been posted.
+The [upstream follow-up](subagent-panel-upstream-report.md) was
+[published on the existing request](https://github.com/openai/codex/issues/43148#issuecomment-6961263780).
+The [publication receipt](evidence/subagent-panel-upstream-publication.json) records the verified
+comment and video attachment; the evaluation manifest above remains the pre-publication snapshot.
 For an inline GitHub player, attach the MP4 in the issue editor; the repository file is the
 durable download/reference copy.

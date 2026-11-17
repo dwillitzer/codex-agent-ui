@@ -1,9 +1,8 @@
-# Prepared follow-up for openai/codex #43148
+# Published follow-up for openai/codex #43148
 
-This draft has not been posted upstream. The target is the existing open
-[persistent subagent activity request](https://github.com/openai/codex/issues/43148),
-following the issue-based [contribution policy](https://github.com/openai/codex/blob/main/docs/contributing.md)
-verified on 2026-11-17. This is an implementation reference and design discussion, not an external PR.
+Posted as **dwillitzer** on 2026-11-17: [view the published comment](https://github.com/openai/codex/issues/43148#issuecomment-6961263780).
+The inline video was verified in the browser, including playback.
+See the [publication receipt](evidence/subagent-panel-upstream-publication.json) for verification details.
 
 ---
 
@@ -11,9 +10,16 @@ Building on this request and the earlier summary-row proposal, we explored a bou
 agent panel in a Codex CLI fork. The use case is returning to a long-running parent session and
 immediately seeing which children are working, what they were assigned, and which transcript is open.
 
+I also saw the completed navigation-discoverability work in [#52853](https://github.com/openai/codex/issues/52853#issuecomment-6110703633), which exposes the existing shortcuts in `?` help. This proposal builds on that with persistent parent-scoped activity, filters, and inline child inspection.
+
+### Recorded fresh-session walkthrough
+
+https://github.com/user-attachments/assets/4772121c-c039-4dbf-9260-47a68f8332aa
+
 **[Recorded walkthrough](https://github.com/dwillitzer/codex-agent-ui/blob/feat/parent-agent-panel/docs/evidence/subagent-panel-walkthrough.mp4)** ·
 [Caption transcript](https://github.com/dwillitzer/codex-agent-ui/blob/feat/parent-agent-panel/docs/evidence/subagent-panel-walkthrough.vtt) ·
 [Implementation branch](https://github.com/dwillitzer/codex-agent-ui/tree/feat/parent-agent-panel) ·
+[Recorded source commit](https://github.com/dwillitzer/codex-agent-ui/commit/7a455536e48e8a7170133feeea52e2f52a9d99c7) ·
 [Behavior and data contract](https://github.com/dwillitzer/codex-agent-ui/blob/feat/parent-agent-panel/docs/subagent-panel.md)
 
 The recording is an actual fresh session with two native children: one forks parent context and
@@ -67,6 +73,6 @@ Validation on Intel macOS:
   shown in the video; app-server fixtures cover those state transitions.
 
 The [visual walkthrough notes](https://github.com/dwillitzer/codex-agent-ui/blob/feat/parent-agent-panel/docs/subagent-panel-visual-walkthrough.md),
-[filter specification](https://github.com/dwillitzer/codex-agent-ui/blob/feat/parent-agent-panel/docs/subagent-panel-status-filter-spec.md), and machine-readable evidence record
+[filter specification](https://github.com/dwillitzer/codex-agent-ui/blob/feat/parent-agent-panel/docs/subagent-panel-status-filter-spec.md), and [machine-readable evidence](https://github.com/dwillitzer/codex-agent-ui/blob/feat/parent-agent-panel/docs/evidence/subagent-panel-visual-walkthrough.json) record
 the implementation observations and evaluation limits. The request is to make delegated work
 persistently visible and inspectable from its parent, with this fork serving as a tested reference.

@@ -130,5 +130,5 @@ The [visual walkthrough](subagent-panel-visual-walkthrough.md) includes a fresh-
 The upstream contribution policy currently accepts issue-based findings and
 design discussions rather than external code PRs. A tested fork and implementation reference can
 accompany [the existing feature request](https://github.com/openai/codex/issues/43148).
-The [prepared upstream report](subagent-panel-upstream-report.md) is ready for review; it has not
-been posted to the issue tracker.
+The [published upstream follow-up](subagent-panel-upstream-report.md) includes the recorded demo,
+implementation observations, and evaluation limits. The [comment is live](https://github.com/openai/codex/issues/43148#issuecomment-6961263780).

@@ -200,6 +200,7 @@ use uuid::Uuid;
 mod account_status;
 mod agent_message_consolidation;
 mod agent_navigation;
+mod agent_panel;
 mod agent_picker;
 mod agent_status_feed;
 #[cfg(any(unix, windows))]

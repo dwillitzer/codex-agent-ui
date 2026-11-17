@@ -192,6 +192,17 @@ impl App {
         selected: Option<ThreadId>,
     ) -> SelectionViewParams {
         let mut threads = self.agent_navigation.visible_threads();
+        if let Some(root) = self.primary_thread_id {
+            threads.retain(|(id, _)| {
+                *id == root
+                    || (!self.side_threads.contains_key(id)
+                        && self
+                            .agent_navigation
+                            .panel_details
+                            .get(id)
+                            .is_none_or(|details| details.root == Some(root)))
+            });
+        }
         let pending = &self.agent_navigation.pending_approvals;
         threads.sort_by_key(|(id, _)| !pending.contains(id));
         let mut row_ids = Vec::with_capacity(threads.len());
@@ -217,7 +228,28 @@ impl App {
                         name.clone()
                     },
                     name_prefix_spans: agent_picker_status_dot_spans(entry.is_closed),
-                    description: Some(uuid.clone()),
+                    description: Some(
+                        self.agent_navigation
+                            .panel_details
+                            .get(&thread_id)
+                            .map(|details| {
+                                format!(
+                                    "{} · {}{} · {uuid}",
+                                    details.display_state(
+                                        entry.is_running,
+                                        entry.is_closed,
+                                        is_pending
+                                    ),
+                                    details.model_context(),
+                                    if details.task.is_empty() {
+                                        String::new()
+                                    } else {
+                                        format!(" · {}", details.task)
+                                    },
+                                )
+                            })
+                            .unwrap_or_else(|| uuid.clone()),
+                    ),
                     is_current,
                     actions: vec![Box::new(move |tx| {
                         tx.send(AppEvent::SelectAgentThread(thread_id));

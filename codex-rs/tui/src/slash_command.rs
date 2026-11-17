@@ -173,6 +173,7 @@ impl SlashCommand {
         matches!(
             self,
             SlashCommand::Review
+                | SlashCommand::MultiAgents
                 | SlashCommand::Model
                 | SlashCommand::Permissions
                 | SlashCommand::Title

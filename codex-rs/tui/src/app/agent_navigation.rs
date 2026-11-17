@@ -41,6 +41,9 @@ use uuid::Uuid;
 /// temporarily out of sync during teardown races.
 #[derive(Debug, Default)]
 pub(crate) struct AgentNavigationState {
+    pub(super) panel_details: HashMap<ThreadId, super::agent_panel::AgentPanelDetails>,
+    pub(super) panel_collapsed: bool,
+    pub(super) panel_discovery_root: Option<ThreadId>,
     /// Latest picker metadata for each tracked thread id.
     threads: HashMap<ThreadId, AgentPickerThreadEntry>,
     /// First-seen order for keyboard cycling. The picker groups waiting threads first.
@@ -267,6 +270,8 @@ impl AgentNavigationState {
     /// This is used when `App` tears down thread event state and needs the picker cache to return
     /// to a pristine single-session state.
     pub(crate) fn clear(&mut self) {
+        self.panel_details.clear();
+        self.panel_discovery_root = None;
         self.threads.clear();
         self.order.clear();
         self.stopped_threads.clear();
@@ -283,6 +288,7 @@ impl AgentNavigationState {
     /// replayable local threads. Keeping those around after the backend confirms they are gone
     /// would leave ghost rows in `/subagents`.
     pub(crate) fn remove(&mut self, thread_id: ThreadId) {
+        self.panel_details.remove(&thread_id);
         self.threads.remove(&thread_id);
         self.order.retain(|candidate| *candidate != thread_id);
         self.stopped_threads.remove(&thread_id);

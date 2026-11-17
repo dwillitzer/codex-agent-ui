@@ -3818,6 +3818,38 @@ async fn raw_slash_command_toggles_and_accepts_on_off_args() {
 }
 
 #[tokio::test]
+async fn subagent_panel_commands_do_not_submit_model_input() {
+    let (mut chat, mut rx, mut op_rx) = make_chatwidget_manual(None).await;
+    for (arg, collapsed) in [("compact", true), ("expand", false)] {
+        chat.dispatch_command_with_args(SlashCommand::MultiAgents, arg.into(), Vec::new());
+        let events = std::iter::from_fn(|| rx.try_recv().ok()).collect::<Vec<_>>();
+        assert!(events.iter().any(|event| matches!(event,
+            AppEvent::SetAgentPanelCollapsed(value) if *value == collapsed)));
+        assert!(op_rx.try_recv().is_err());
+    }
+    chat.dispatch_command(SlashCommand::MultiAgents);
+    let events = std::iter::from_fn(|| rx.try_recv().ok()).collect::<Vec<_>>();
+    assert!(
+        events
+            .iter()
+            .any(|event| matches!(event, AppEvent::OpenAgentPicker))
+    );
+}
+
+#[tokio::test]
+async fn subagent_panel_invalid_argument_reports_usage() {
+    let (mut chat, mut rx, mut op_rx) = make_chatwidget_manual(None).await;
+    chat.dispatch_command_with_args(SlashCommand::MultiAgents, "stop".into(), Vec::new());
+    let rendered = drain_insert_history(&mut rx)
+        .iter()
+        .map(|lines| lines_to_single_string(lines))
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(rendered.contains("Usage: /subagents [compact|expand]"));
+    assert!(op_rx.try_recv().is_err());
+}
+
+#[tokio::test]
 async fn raw_slash_command_reports_usage_for_invalid_arg() {
     let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
 

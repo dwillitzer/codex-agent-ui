@@ -318,6 +318,7 @@ impl App {
             .agent_navigation
             .active_agent_label(self.current_displayed_thread_id(), self.primary_thread_id);
         self.chat_widget.set_active_agent_label(label);
+        self.sync_subagent_panel();
         self.sync_side_thread_ui();
     }
 

@@ -3521,6 +3521,10 @@ impl App {
             AppEvent::OpenAgentPicker => {
                 self.open_agent_picker(app_server).await;
             }
+            AppEvent::SetAgentPanelCollapsed(collapsed) => {
+                self.agent_navigation.panel_collapsed = collapsed;
+                self.sync_subagent_panel();
+            }
             AppEvent::AgentPickerThreadsLoaded {
                 primary_thread_id,
                 request_id,

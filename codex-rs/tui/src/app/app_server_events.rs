@@ -71,6 +71,7 @@ impl App {
     ) {
         match event {
             AppServerEvent::Lagged { skipped } => {
+                self.invalidate_agent_panel();
                 tracing::warn!(
                     skipped,
                     "app-server event consumer lagged; dropping ignored events"
@@ -175,6 +176,7 @@ impl App {
                 .await;
             }
             AppServerEvent::Disconnected { message } => {
+                self.invalidate_agent_panel();
                 // The request result distinguishes a refused start from a lost reply.
                 if self.pending_startup_thread_start
                     && !matches!(self.app_server_target, crate::AppServerTarget::Embedded)
@@ -308,6 +310,7 @@ impl App {
                 .or_default();
         }
         self.track_agents_overview_notification(&notification);
+        self.track_agent_panel_notification(&notification);
         if let ServerNotification::ThreadSettingsUpdated(settings) = &notification
             && let Ok(thread_id) = ThreadId::from_string(&settings.thread_id)
             && self

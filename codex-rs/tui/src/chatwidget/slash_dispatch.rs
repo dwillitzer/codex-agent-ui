@@ -807,6 +807,15 @@ impl ChatWidget {
                 self.handle_model_command_args(trimmed);
                 self.app_event_tx.send(AppEvent::SettingsSelectionClosed);
             }
+            SlashCommand::MultiAgents => match trimmed {
+                "compact" => self
+                    .app_event_tx
+                    .send(AppEvent::SetAgentPanelCollapsed(true)),
+                "expand" => self
+                    .app_event_tx
+                    .send(AppEvent::SetAgentPanelCollapsed(false)),
+                _ => self.add_error_message("Usage: /subagents [compact|expand]".to_string()),
+            },
             SlashCommand::Title => {
                 self.handle_terminal_title_command_args(trimmed);
                 self.app_event_tx.send(AppEvent::SettingsSelectionClosed);

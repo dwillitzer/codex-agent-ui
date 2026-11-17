@@ -23,10 +23,17 @@ impl App {
         app_server: &AppServerSession,
         root: ThreadId,
     ) {
+        self.refresh_agent_picker_with_handle(app_server.request_handle(), root);
+    }
+
+    pub(super) fn refresh_agent_picker_with_handle(
+        &mut self,
+        request_handle: codex_app_server_client::AppServerRequestHandle,
+        root: ThreadId,
+    ) {
         let Some(request_id) = self.agent_navigation.begin_picker_refresh(root) else {
             return;
         };
-        let request_handle = app_server.request_handle();
         let app_event_tx = self.app_event_tx.clone();
         tokio::spawn(async move {
             let result = async {
@@ -133,6 +140,7 @@ impl App {
             }
         };
         for thread in refresh.threads {
+            self.remember_agent_panel_thread(root, &thread);
             let Ok(thread_id) = ThreadId::from_string(&thread.id) else {
                 continue;
             };

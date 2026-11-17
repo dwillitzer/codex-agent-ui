@@ -219,6 +219,7 @@ mod paste_burst;
 mod pending_input_preview;
 mod pending_thread_approvals;
 mod picker_option;
+pub(crate) mod subagent_panel;
 pub(crate) use picker_option::picker_option_list;
 pub(crate) use picker_option::picker_option_row;
 pub(crate) mod popup_consts;
@@ -344,6 +345,7 @@ pub(crate) struct BottomPane {
     pending_input_preview: PendingInputPreview,
     /// Inactive threads with pending approval requests.
     pending_thread_approvals: PendingThreadApprovals,
+    subagent_panel: subagent_panel::SubagentPanel,
     context_window_percent: Option<i64>,
     context_window_used_tokens: Option<i64>,
     keymap: RuntimeKeymap,
@@ -430,6 +432,7 @@ impl BottomPane {
             unified_exec_footer: UnifiedExecFooter::new(),
             pending_input_preview: PendingInputPreview::new(),
             pending_thread_approvals: PendingThreadApprovals::new(),
+            subagent_panel: subagent_panel::SubagentPanel::default(),
             esc_backtrack_hint: false,
             animations_enabled,
             effects,
@@ -1794,6 +1797,16 @@ impl BottomPane {
         }
     }
 
+    pub(crate) fn set_subagent_panel(
+        &mut self,
+        rows: Vec<subagent_panel::SubagentPanelRow>,
+        collapsed: bool,
+    ) {
+        if self.subagent_panel.set(rows, collapsed) {
+            self.request_redraw();
+        }
+    }
+
     #[cfg(test)]
     pub(crate) fn pending_thread_approvals(&self) -> &[String] {
         self.pending_thread_approvals.threads()
@@ -2529,7 +2542,9 @@ impl BottomPane {
             let has_status_or_footer = self.status_widget().is_some()
                 || self.hook_status_message.is_some()
                 || !self.unified_exec_footer.is_empty();
-            let has_inline_previews = has_pending_thread_approvals || has_pending_input;
+            let has_inline_previews = has_pending_thread_approvals
+                || has_pending_input
+                || !self.subagent_panel.is_empty();
             if !has_inline_previews
                 && self.status_widget().is_some()
                 && let Some(tip) = options.working_tip
@@ -2542,6 +2557,10 @@ impl BottomPane {
             flex.push(
                 /*flex*/ 1,
                 RenderableItem::Borrowed(&self.pending_thread_approvals),
+            );
+            flex.push(
+                /*flex*/ 1,
+                RenderableItem::Borrowed(&self.subagent_panel),
             );
             if has_pending_thread_approvals && has_pending_input {
                 flex.push(/*flex*/ 0, RenderableItem::Owned("".into()));
@@ -2702,6 +2721,12 @@ impl Renderable for ChatComposerPresentation<'_> {
 impl Renderable for BottomPane {
     fn render(&self, area: Rect, buf: &mut Buffer) {
         self.as_renderable().render(area, buf);
+        if !area.is_empty()
+            && self.view_stack.is_empty()
+            && self.subagent_panel.needs_clock_refresh()
+        {
+            self.request_redraw_in(Duration::from_secs(1));
+        }
     }
     fn desired_height(&self, width: u16) -> u16 {
         self.as_renderable().desired_height(width)

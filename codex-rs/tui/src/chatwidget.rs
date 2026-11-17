@@ -1508,6 +1508,14 @@ impl ChatWidget {
         self.bottom_pane.set_pending_thread_approvals(threads);
     }
 
+    pub(crate) fn set_subagent_panel(
+        &mut self,
+        rows: Vec<crate::bottom_pane::subagent_panel::SubagentPanelRow>,
+        collapsed: bool,
+    ) {
+        self.bottom_pane.set_subagent_panel(rows, collapsed);
+    }
+
     pub(crate) fn clear_thread_rename_block(&mut self) {
         self.thread_rename_block_message = None;
     }

@@ -9,7 +9,8 @@ import { join } from "node:path";
 const [binary, ...args] = process.argv.slice(2);
 if (!binary) throw new Error("Expected a Cargo test executable");
 const fixtureHome = mkdtempSync(join(tmpdir(), "codex-agent-ui-test-home-"));
-console.log(`Isolated test-process home: ${fixtureHome}`);
+// Nextest parses stdout during --list; wrapper diagnostics belong on stderr.
+console.error(`Isolated test-process home: ${fixtureHome}`);
 const child = spawn(binary, args, {
   stdio: "inherit",
   env: {

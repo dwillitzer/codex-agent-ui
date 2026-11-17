@@ -32,53 +32,54 @@
 
 ## Commands and results
 
-**Work in progress: feature tests pass; complete regression validation is not yet green.**
+The macOS TUI feature passed focused tests and live interaction. A self-contained Intel companion
+build remains blocked by a V8 artifact prerequisite; see the
+[live evaluation](subagent-panel-live-evaluation.md) for the signed companion used here.
 
-Run `node scripts/evaluate-subagent-panel.mjs /path/to/evaluation-output` to reproduce the checks.
-The script records commands, exit status, timestamps, and the working diff digest. It uses the
-upstream 8 MiB test-thread stack and a Cargo runner that isolates the **test executable's** home.
-The compiler and Cargo caches keep their normal environment. The full suite uses Nextest's local
-profile, process isolation, timeout/retry policy, and four concurrent tests.
+| Check                                                                                  | Observed result                                                             |
+| -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Whitespace and touched-file nightly rustfmt                                            | Passed                                                                      |
+| New application tests                                                                  | 8 passed                                                                    |
+| New render and command tests                                                           | 7 passed                                                                    |
+| Existing navigation tests                                                              | 10 passed                                                                   |
+| Full shared-process TUI run, clean home                                                | 6,221 passed, 5 failed, 4 ignored                                           |
+| Isolated Nextest rerun of all five failures plus the 25 feature/navigation cases       | **30 passed, 0 failed**, 3 slow; 49.460 seconds                             |
+| Strict TUI Clippy, all targets, no dependency linting                                  | Passed with `--no-deps -- -D warnings`                                      |
+| Strict Clippy including dependencies                                                   | Blocked by `collapsible_if` in unchanged `core/src/session/session.rs:1814` |
+| Compiled CLI and version check                                                         | Passed; development version `0.0.0`                                         |
+| Companion build from source on Intel macOS                                             | Blocked: V8 152.2.0 Intel binding download returned HTTP 404                |
+| Explicit signed companion smoke                                                        | Passed                                                                      |
+| Live Herdr TUI: children, active inspection, return to parent, context, compact/expand | Passed; see linked live evaluation                                          |
 
-| Check                                               | Observed result                                                             |
-| --------------------------------------------------- | --------------------------------------------------------------------------- |
-| Whitespace and touched-file nightly rustfmt         | Passed during implementation; final rerun pending                           |
-| New application tests                               | **8 passed**, 0 failed                                                      |
-| New render and command tests                        | **7 passed**, 0 failed; also passed through the isolated-home wrapper       |
-| Existing navigation regression group                | **10 passed**, 0 failed with upstream's 8 MiB stack                         |
-| Full shared-process libtest run with a clean home   | **6,221 passed, 5 failed, 4 ignored**; failures remain under investigation  |
-| Canonical Nextest run with isolated test homes      | Queued behind the separate CLI build                                        |
-| Standard strict Clippy including dependency linting | Blocked by `collapsible_if` in unchanged `core/src/session/session.rs:1814` |
-| Strict TUI Clippy without dependency linting        | Pending                                                                     |
-| Separate CLI build and terminal smoke               | Building; not yet validated                                                 |
+The shared-process run enumerated 6,230 library cases: 6,226 executed and four ignored. All five
+failures were Insta rejecting inline snapshot assertions reused in that process, rather than
+five differing product assertions. Each passed under the repository's recommended process-isolated
+Nextest runner, together with all 15 new tests and 10 navigation tests. A redundant full Nextest
+replay was stopped after identifying this cause; **one all-green full Nextest invocation is not
+claimed**.
 
-The first default-stack navigation run aborted with stack overflow. The upstream Rust CI files
-explicitly set `RUST_MIN_STACK=8388608`; that setting made all 10 navigation cases pass.
-The first TUI compiler pass found an ambiguous test macro import and an omitted internal
-token-usage field. Both were corrected before the passing new-feature tests.
+The isolated run tested implementation commit `4e0f53ae249aa5e2629c58793562d0f66870f66e`.
+Subsequent changes concern docs and evaluation scripts, not the tested Rust implementation.
 
-An initial non-hermetic suite showed six skill/config warning banners in snapshots. Skill discovery
-reads the real home even with a temporary Codex directory. The failing draft-handoff snapshot
-passed with the **same compiled executable** and only a clean test-process home. No golden
-snapshots were accepted to hide this difference. A fork-lifecycle test also passed when rerun
-individually; this does not establish that the broader suite is green.
+## Reproduction and isolation
 
-The five failures in the clean-home shared-process run were:
+Run `node scripts/evaluate-subagent-panel.mjs /path/to/output` for the complete workflow. It records
+commands, exits, timestamps, and a diff digest. Tests use the upstream 8 MiB stack, Nextest's local
+profile, and a Cargo runner isolating the test executable's home; compiler/Cargo caches retain
+their normal environment. Build the companion first or use the explicit override documented in
+the live evaluation. No installed helper is silently substituted.
 
-- `fork_releases_a_provisional_saved_chat_on_its_original_connection`
-- `agents_overview_acknowledges_inactive_steer_before_interrupt`
-- `saved_chat_replays_approval_after_a_stale_runtime_close`
-- `sidebar_reopens_saved_side_chat_after_restart`
-- `slash_daybreak_offers_an_application_when_unavailable`
+`CODEX_AGENT_UI_EVAL_ONLY=runtime-host-help,cli-version` selects a narrow smoke check;
+`CODEX_AGENT_UI_EVAL_FROM=clippy` resumes the later phase. Skipped checks are not counted as passed.
 
-Nextest results and any subsequent fixes must be recorded before marking the feature validated.
-Raw local logs and result JSON files are retained under the checkout's ignored `.dev/` directory.
-They are not included in the public fork.
+The default test stack initially overflowed; upstream CI's `RUST_MIN_STACK=8388608` resolved it.
+Skill discovery also read the real home despite a temporary Codex directory, adding six warnings
+to snapshots. The affected snapshot passed with the same executable and only a clean test-process
+home. No golden snapshots were accepted to hide the warnings.
 
-The initial foreground build exceeded the tool transport's five-minute response timeout while
-populating upstream git dependencies. It was stopped and restarted with a persistent log and exit
-record. That transport timeout was not a compiler/test failure. The subsequent build progressed
-through dependency download into Rust compilation.
+Raw pane captures, logs, and result JSON remain in ignored local `.dev/` directories.
+Linux/Windows UI, the full workspace suite, and a source-built standalone Intel companion remain
+unrun/unverified.
 
 ## Contribution route
 

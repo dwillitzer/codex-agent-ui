@@ -74,6 +74,9 @@ The feature affects this fork's terminal client, not the desktop app or IDE exte
 ## Evaluation and upstream contribution
 
 See [the evaluation record](subagent-panel-evaluation.md) for commands, results, limits, and the
-acceptance matrix. The upstream contribution policy currently accepts issue-based findings and
+acceptance matrix, and [the live TUI evaluation](subagent-panel-live-evaluation.md) for the Herdr
+run and companion-runtime prerequisite. The upstream contribution policy currently accepts issue-based findings and
 design discussions rather than external code PRs. A tested fork and implementation reference can
 accompany [the existing feature request](https://github.com/openai/codex/issues/43148).
+The [prepared upstream report](subagent-panel-upstream-report.md) is ready for review; it has not
+been posted to the issue tracker.

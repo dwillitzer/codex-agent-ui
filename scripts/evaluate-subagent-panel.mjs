@@ -1,8 +1,17 @@
 #!/usr/bin/env node
-// Reproducible local evaluation. Does not launch an authenticated model turn or install a binary.
+// Reproducible local evaluation. Does not launch an authenticated turn or replace installed Codex.
 import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdirSync, openSync, closeSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  openSync,
+  closeSync,
+  writeFileSync,
+  readFileSync,
+  existsSync,
+  realpathSync,
+  symlinkSync,
+} from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -15,6 +24,49 @@ mkdirSync(output, { recursive: true });
 const rustcVersion = spawnSync("rustc", ["-vV"], { encoding: "utf8" });
 const host = rustcVersion.stdout.match(/^host: (.+)$/m)?.[1];
 if (!host) throw new Error("Could not determine the Rust host target");
+const runtimeHost = join(
+  root,
+  "codex-rs",
+  "target",
+  "debug",
+  process.platform === "win32"
+    ? "codex-code-mode-host.exe"
+    : "codex-code-mode-host",
+);
+const companionOverride = process.env.CODEX_AGENT_UI_HOST_PROGRAM;
+let companion = { mode: "source-build" };
+if (companionOverride) {
+  const program = realpathSync(resolve(companionOverride));
+  if (process.platform === "darwin") {
+    const signature = spawnSync("codesign", ["--verify", "--strict", program], {
+      encoding: "utf8",
+    });
+    if (signature.status !== 0)
+      throw new Error(`Companion signature check failed: ${signature.stderr}`);
+  }
+  const help = spawnSync(program, ["--help"], {
+    encoding: "utf8",
+    timeout: 10000,
+  });
+  if (help.status !== 0 || !help.stdout.includes("grpc+stdio"))
+    throw new Error(
+      "Explicit companion does not advertise the required grpc+stdio transport",
+    );
+  if (existsSync(runtimeHost)) {
+    if (realpathSync(runtimeHost) !== program)
+      throw new Error(
+        "A different runtime companion already exists; refusing to overwrite it",
+      );
+  } else {
+    mkdirSync(dirname(runtimeHost), { recursive: true });
+    symlinkSync(program, runtimeHost, "file");
+  }
+  companion = {
+    mode: "explicit-companion",
+    program,
+    sha256: createHash("sha256").update(readFileSync(program)).digest("hex"),
+  };
+}
 const testRunnerConfig = `target.${host}.runner=${JSON.stringify([
   process.execPath,
   join(root, "scripts", "subagent-panel-test-runner.mjs"),
@@ -39,10 +91,18 @@ const report = {
   testIsolation:
     "Temporary HOME for test executable only; Cargo/compiler environment unchanged",
   testThreads: 4,
+  companion,
   checks: [],
 };
 const checks = [
   ["whitespace", "git", ["diff", "HEAD", "--check"], root],
+  [
+    "runtime-host-build",
+    "cargo",
+    ["build", "--locked", "-p", "codex-code-mode-host"],
+    join(root, "codex-rs"),
+  ],
+  ["runtime-host-help", runtimeHost, ["--help"], root],
   [
     "new-app-tests",
     "cargo",
@@ -114,7 +174,7 @@ const checks = [
     ["--version"],
     root,
   ],
-];
+].filter(([name]) => !companionOverride || name !== "runtime-host-build");
 const save = () =>
   writeFileSync(
     join(output, "results.json"),
@@ -122,12 +182,16 @@ const save = () =>
   );
 console.log(`Evaluation artifacts: ${output}`);
 const requestedStart = process.env.CODEX_AGENT_UI_EVAL_FROM;
+const only = process.env.CODEX_AGENT_UI_EVAL_ONLY?.split(",").filter(Boolean);
+if (only?.some((name) => !checks.some(([check]) => check === name)))
+  throw new Error("Unknown selected evaluation check");
 const firstCheck = requestedStart
   ? checks.findIndex(([name]) => name === requestedStart)
   : 0;
 if (firstCheck < 0)
   throw new Error(`Unknown evaluation check: ${requestedStart}`);
 for (const [name, command, args, cwd] of checks.slice(firstCheck)) {
+  if (only && !only.includes(name)) continue;
   const executedArgs =
     command === "cargo" && args[0] === "test"
       ? [...args, "--config", testRunnerConfig, "--", "--test-threads=4"]
@@ -172,7 +236,15 @@ for (const [name, command, args, cwd] of checks.slice(firstCheck)) {
     process.exitCode = 1;
     // New-feature failures stop the evaluation. Broader regression/lint failures still allow
     // independent checks to finish so the report does not imply those checks were run or passed.
-    if (["whitespace", "new-app-tests", "panel-render-tests"].includes(name))
+    if (
+      [
+        "whitespace",
+        "runtime-host-build",
+        "runtime-host-help",
+        "new-app-tests",
+        "panel-render-tests",
+      ].includes(name)
+    )
       break;
   }
 }

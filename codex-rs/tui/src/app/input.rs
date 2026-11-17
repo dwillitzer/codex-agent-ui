@@ -668,6 +668,13 @@ impl App {
             }
         }
 
+        if self
+            .chat_widget
+            .handle_subagent_panel_navigation_key(key_event)
+        {
+            return;
+        }
+
         if side_return_shortcut_matches(key_event)
             && self
                 .maybe_return_from_side(tui, app_server, key_event)

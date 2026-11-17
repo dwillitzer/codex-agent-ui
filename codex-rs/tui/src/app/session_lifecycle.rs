@@ -799,6 +799,22 @@ impl App {
             self.active_thread_rx = Some(receiver);
         }
         self.store_active_thread_receiver().await;
+        if let Some(previous) = previous_thread_id
+            && self.primary_thread_id.is_some()
+            && [previous, thread_id].into_iter().all(|id| {
+                Some(id) == self.primary_thread_id
+                    || self
+                        .agent_navigation
+                        .panel_details
+                        .get(&id)
+                        .is_some_and(|details| details.root == self.primary_thread_id)
+            })
+        {
+            let bookmark = self.transcript_view.bookmark(&self.transcript_cells);
+            self.agent_navigation
+                .panel_bookmarks
+                .insert(previous, super::agent_panel::AgentPanelBookmark(bookmark));
+        }
         self.active_thread_id = None;
         let Some((receiver, mut snapshot)) = self.activate_thread_for_replay(thread_id).await
         else {
@@ -995,6 +1011,14 @@ impl App {
             AppEvent::ResetTranscriptForThreadSwitch
         });
         self.replay_thread_snapshot(snapshot, resume_restored_queue);
+        if self
+            .agent_navigation
+            .panel_bookmarks
+            .contains_key(&thread_id)
+        {
+            self.app_event_tx
+                .send(AppEvent::RestoreAgentPanelBookmark(thread_id));
+        }
         self.app_event_tx
             .send(AppEvent::RestoreBackgroundTerminals(thread_id));
         if let Some(thread_id) = self.chat_widget.thread_id()

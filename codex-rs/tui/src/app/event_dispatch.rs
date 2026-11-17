@@ -3525,6 +3525,36 @@ impl App {
                 self.agent_navigation.panel_collapsed = collapsed;
                 self.sync_subagent_panel();
             }
+            AppEvent::RestoreAgentPanelBookmark(thread_id) => {
+                if self.current_displayed_thread_id() == Some(thread_id)
+                    && let Some(bookmark) = self.agent_navigation.panel_bookmarks.remove(&thread_id)
+                {
+                    self.transcript_view.restore_bookmark(bookmark.0);
+                    tui.frame_requester().schedule_frame();
+                }
+            }
+            AppEvent::AgentPanelStopTurn { thread_id, confirmed } => {
+                if self.can_stop_agent_panel_turn(thread_id, app_server.backend_id()) {
+                    if confirmed {
+                        self.stop_agents_overview_thread(app_server, thread_id).await;
+                    } else {
+                        self.chat_widget.show_selection_view(crate::bottom_pane::SelectionViewParams {
+                            title: Some(format!("Stop the current turn in {}?", self.thread_label(thread_id))),
+                            items: vec![
+                                crate::bottom_pane::SelectionItem {
+                                    name: "Cancel".into(), dismiss_on_select: true, ..Default::default()
+                                },
+                                crate::bottom_pane::SelectionItem {
+                                    name: "Stop current turn (keep agent and history)".into(),
+                                    actions: vec![Box::new(move |tx| tx.send(AppEvent::AgentPanelStopTurn { thread_id, confirmed: true }))],
+                                    dismiss_on_select: true, ..Default::default()
+                                },
+                            ],
+                            ..crate::bottom_pane::SelectionViewParams::confirmation()
+                        });
+                    }
+                }
+            }
             AppEvent::AgentPickerThreadsLoaded {
                 primary_thread_id,
                 request_id,

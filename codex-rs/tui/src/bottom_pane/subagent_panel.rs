@@ -1,10 +1,12 @@
 //! A bounded, persistent view of the current session's child agents.
 //!
-//! Selection uses the existing `/subagents` picker so this view never steals editor keys.
+//! Explicit focus separates the selected row from the transcript being viewed. Outside focus,
+//! editor keys remain with the composer. Selection follows stable thread IDs through updates.
 //! Unknown context and idle threads are deliberately distinct from zero usage and completion.
 
 use crate::render::renderable::Renderable;
 use crate::text_formatting::truncate_text;
+use codex_protocol::ThreadId;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::Stylize;
@@ -15,6 +17,9 @@ use std::time::Instant;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct SubagentPanelRow {
+    pub id: ThreadId,
+    pub parent: bool,
+    pub input_target: String,
     pub label: String,
     pub state: String,
     pub model_context: String,
@@ -29,6 +34,7 @@ pub(crate) struct SubagentPanelRow {
 pub(crate) struct SubagentPanel {
     rows: Vec<SubagentPanelRow>,
     collapsed: bool,
+    selected: Option<ThreadId>,
 }
 
 impl SubagentPanel {
@@ -38,11 +44,64 @@ impl SubagentPanel {
         }
         self.rows = rows;
         self.collapsed = collapsed;
+        if self.is_empty() {
+            self.selected = None;
+        }
+        if self
+            .selected
+            .is_some_and(|id| !self.rows.iter().any(|row| row.id == id))
+        {
+            self.selected = self.rows.iter().find(|row| row.current).map(|row| row.id);
+        }
         true
     }
 
+    pub(crate) fn focus(&mut self) -> bool {
+        if self.is_empty() {
+            return false;
+        }
+        self.selected = self
+            .rows
+            .iter()
+            .find(|row| row.current)
+            .or_else(|| self.rows.first())
+            .map(|row| row.id);
+        true
+    }
+
+    pub(crate) fn focused(&self) -> bool {
+        self.selected.is_some()
+    }
+
+    pub(crate) fn blur(&mut self) {
+        self.selected = None;
+    }
+
+    pub(crate) fn selected(&self) -> Option<ThreadId> {
+        self.selected
+    }
+
+    pub(crate) fn move_selection(&mut self, forward: bool) {
+        let Some(index) = self
+            .rows
+            .iter()
+            .position(|row| Some(row.id) == self.selected)
+        else {
+            return;
+        };
+        let len = self.rows.len();
+        self.selected = Some(
+            self.rows[if forward {
+                (index + 1) % len
+            } else {
+                (index + len - 1) % len
+            }]
+            .id,
+        );
+    }
+
     pub(crate) fn is_empty(&self) -> bool {
-        self.rows.is_empty()
+        !self.rows.iter().any(|row| !row.parent)
     }
 
     #[cfg(test)]
@@ -51,7 +110,7 @@ impl SubagentPanel {
     }
 
     pub(crate) fn needs_clock_refresh(&self) -> bool {
-        !self.collapsed
+        (!self.collapsed || self.focused())
             && self
                 .rows
                 .iter()
@@ -59,24 +118,59 @@ impl SubagentPanel {
     }
 
     fn lines(&self, width: u16) -> Vec<Line<'static>> {
-        if self.rows.is_empty() || width < 12 {
+        if self.is_empty() || width < 12 {
             return vec![];
         }
-        let active = self.rows.iter().filter(|row| row.active).count();
+        let active = self
+            .rows
+            .iter()
+            .filter(|row| !row.parent && row.active)
+            .count();
+        let children = self.rows.iter().filter(|row| !row.parent).count();
         let summary = format!(
-            "Agents: {active} active / {} · /subagents to inspect · /subagents {}",
-            self.rows.len(),
+            "Agents: {active} active / {} · F6 select · /subagents {}",
+            children,
             if self.collapsed { "expand" } else { "compact" },
         );
         let mut lines = vec![Line::from(truncate_text(&summary, width as usize)).dim()];
-        if self.collapsed {
+        if let Some(viewed) = self.rows.iter().find(|row| row.current && !row.parent) {
+            lines.push(
+                Line::from(truncate_text(
+                    &format!("Viewing {} · Input: {}", viewed.label, viewed.input_target),
+                    width as usize,
+                ))
+                .cyan(),
+            );
+        }
+        if self.focused() {
+            lines.push(
+                Line::from(truncate_text(
+                    "Select: ↑/↓ · Enter view · a stop turn · Esc return to input",
+                    width as usize,
+                ))
+                .cyan(),
+            );
+        }
+        if self.collapsed && !self.focused() {
             return lines;
         }
         // Keep active agents visible even when earlier children have finished. The picker keeps
         // every row in stable spawn order; this preview has a fixed height budget.
-        let mut rows: Vec<_> = self.rows.iter().collect();
-        rows.sort_by_key(|row| (!row.current, !row.active));
-        for row in rows.iter().take(3) {
+        let mut rows: Vec<_> = self
+            .rows
+            .iter()
+            .filter(|row| self.focused() || !row.parent)
+            .collect();
+        let start = if self.focused() {
+            rows.iter()
+                .position(|row| Some(row.id) == self.selected)
+                .unwrap_or(0)
+                .saturating_sub(2)
+        } else {
+            rows.sort_by_key(|row| (!row.current, !row.active));
+            0
+        };
+        for row in rows.iter().skip(start).take(3) {
             let elapsed = row.elapsed.or_else(|| {
                 row.started
                     .filter(|_| row.active)
@@ -89,8 +183,13 @@ impl SubagentPanel {
                 })
                 .unwrap_or_default();
             let text = format!(
-                "{} {} · {}{}",
-                if row.current { ">" } else { "·" },
+                "{}{} {} · {}{}",
+                if Some(row.id) == self.selected {
+                    ">"
+                } else {
+                    " "
+                },
+                if row.current { "●" } else { "·" },
                 row.label,
                 row.state,
                 elapsed,
@@ -105,8 +204,8 @@ impl SubagentPanel {
                 lines.push(Line::from(truncate_text(&details, width as usize)).dim());
             }
         }
-        if self.rows.len() > 3 {
-            lines.push(Line::from(format!("  +{} more in /subagents", self.rows.len() - 3)).dim());
+        if rows.len() > 3 {
+            lines.push(Line::from(format!("  {} more · /subagents for all", rows.len() - 3)).dim());
         }
         lines
     }
@@ -129,6 +228,9 @@ mod tests {
 
     fn row(name: &str, active: bool) -> SubagentPanelRow {
         SubagentPanelRow {
+            id: ThreadId::new(),
+            parent: false,
+            input_target: "agent".into(),
             label: name.into(),
             state: if active { "running" } else { "done" }.into(),
             model_context: "gpt-child · ctx 50% used (60K/108K)".into(),
@@ -169,10 +271,10 @@ mod tests {
             false,
         );
         insta::assert_snapshot!(render(&panel, 110), @"
-        Agents: 1 active / 2 · /subagents to inspect · /subagents compact
-        · /root/source-review · running · 1m14s
+        Agents: 1 active / 2 · F6 select · /subagents compact
+         · /root/source-review · running · 1m14s
           gpt-child · ctx 50% used (60K/108K) · Review source and report findings
-        · /root/tests · done · 1m14s
+         · /root/tests · done · 1m14s
           gpt-child · ctx 50% used (60K/108K) · Review source and report findings
         ");
         assert!(panel.has_active_agents());
@@ -188,12 +290,12 @@ mod tests {
         let mut panel = SubagentPanel::default();
         panel.set(rows, false);
         let text = render(&panel, 100);
-        assert!(text.contains("> current-agent"));
+        assert!(text.contains("● current-agent"));
         assert!(text.contains("running-agent"));
-        assert!(text.contains("+19 more in /subagents"));
-        assert_eq!(panel.desired_height(100), 8);
+        assert!(text.contains("19 more · /subagents"));
+        assert_eq!(panel.desired_height(100), 9);
         // Narrow layouts use one line per child; no task wrapping or unbounded height.
-        assert_eq!(panel.desired_height(20), 5);
+        assert_eq!(panel.desired_height(20), 6);
         assert_eq!(panel.desired_height(0), 0);
     }
 
@@ -221,5 +323,37 @@ mod tests {
         assert_eq!(buffer[(0, 0)].symbol(), "x");
         assert_eq!(buffer[(35, 2)].symbol(), "x");
         assert_eq!(buffer[(5, 4)].symbol(), "x");
+    }
+
+    #[test]
+    fn focus_tracks_identity_across_completion_updates_and_windows_selection() {
+        let mut rows: Vec<_> = (0..8).map(|i| row(&format!("agent-{i}"), true)).collect();
+        rows[0].parent = true;
+        rows[0].label = "Main".into();
+        rows[0].current = true;
+        let mut panel = SubagentPanel::default();
+        panel.set(rows.clone(), true);
+        assert!(panel.focus());
+        for _ in 0..7 {
+            panel.move_selection(true);
+        }
+        let selected = panel.selected();
+        rows[7].active = false;
+        rows[7].state = "done".into();
+        panel.set(rows.clone(), true);
+        assert_eq!(panel.selected(), selected);
+        let text = render(&panel, 100);
+        assert!(text.contains(">· agent-7 · done"), "{text}");
+        assert!(!text.contains("agent-1"));
+        panel.move_selection(true);
+        assert_eq!(panel.selected(), Some(rows[0].id));
+        panel.move_selection(false);
+        assert_eq!(panel.selected(), selected);
+        rows.pop();
+        panel.set(rows, true);
+        assert!(render(&panel, 100).contains(">● Main"));
+        panel.blur();
+        assert!(!panel.focused());
+        assert_eq!(panel.desired_height(100), 1);
     }
 }

@@ -27,6 +27,9 @@ fn parent_owned_thread_allows_local_commands() {
     }
 
     for (command, args) in [
+        (SlashCommand::MultiAgents, "focus"),
+        (SlashCommand::MultiAgents, "compact"),
+        (SlashCommand::MultiAgents, "expand"),
         (SlashCommand::Title, "model"),
         (SlashCommand::Statusline, "model --no-colors"),
     ] {

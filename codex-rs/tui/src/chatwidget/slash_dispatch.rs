@@ -808,13 +808,16 @@ impl ChatWidget {
                 self.app_event_tx.send(AppEvent::SettingsSelectionClosed);
             }
             SlashCommand::MultiAgents => match trimmed {
+                "focus" => {
+                    self.bottom_pane.focus_subagent_panel();
+                }
                 "compact" => self
                     .app_event_tx
                     .send(AppEvent::SetAgentPanelCollapsed(true)),
                 "expand" => self
                     .app_event_tx
                     .send(AppEvent::SetAgentPanelCollapsed(false)),
-                _ => self.add_error_message("Usage: /subagents [compact|expand]".to_string()),
+                _ => self.add_error_message("Usage: /subagents [compact|expand|focus]".to_string()),
             },
             SlashCommand::Title => {
                 self.handle_terminal_title_command_args(trimmed);

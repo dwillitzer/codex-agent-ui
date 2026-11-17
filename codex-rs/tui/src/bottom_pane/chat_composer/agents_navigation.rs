@@ -5,6 +5,22 @@
 use super::*;
 
 impl ChatComposer {
+    /// Panel focus never takes arrows from drafts, popups, paste bursts, or remapped editors.
+    pub(crate) fn subagent_panel_navigation_available(&self, empty_down: bool) -> bool {
+        self.has_focus
+            && !self.is_in_paste_burst()
+            && !self.popup_active()
+            && !self.query_active()
+            && !self.draft.textarea.is_vim_operator_pending()
+            && (!empty_down
+                || (self.is_empty()
+                    && !self.draft.textarea.is_vim_normal_mode()
+                    && self
+                        .editor_keymap
+                        .move_down
+                        .is_pressed(KeyCode::Down.into())))
+    }
+
     pub(crate) fn agents_navigation_key_available(&self) -> bool {
         let move_left = if self.draft.textarea.is_vim_normal_mode() {
             &self.vim_normal_keymap.move_left

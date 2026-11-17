@@ -1,0 +1,167 @@
+{
+  "recordedAt": "2026-11-17T07:47:04.151Z",
+  "implementationBase": "60afcd549b9ed87d45822357e3bfbdb9866bedb6",
+  "branch": "feat/parent-agent-panel",
+  "platform": "x86_64-apple-darwin",
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13) (Homebrew)",
+  "sourceSha256": {
+    "codex-rs/tui/src/app.rs": "88ab7f2363d2b845a0c16bc4f814432b1cb1bde50b09f18dbe04d57887dfed50",
+    "codex-rs/tui/src/app/agent_navigation.rs": "7e26dfa86d1332ce3b1814a50c5ca28438b49b9c4e8b40454ed2a8f839e2f816",
+    "codex-rs/tui/src/app/agent_panel.rs": "921a7a7dd0182488ba98840ffc35a8d4683cbc3c800d726c405fb3311ce00fd5",
+    "codex-rs/tui/src/app/event_dispatch.rs": "a424d37f6ab8f8ccefd72b5a07101c9c8be32de11113d769d69f451d382ac917",
+    "codex-rs/tui/src/app/input.rs": "d8175e55259356dd8e2aefda8b1a26054cb9d69a7d1caaf12818e2d59724c7be",
+    "codex-rs/tui/src/app/session_lifecycle.rs": "52f4b8b0147cdcd016c774bb7e5c0539954e7bd24ba8452ad9f2976d4bbefd5b",
+    "codex-rs/tui/src/app/tests/agent_panel_tests.rs": "ba0751884fff3cc32c917f7d8479f5239dca3c795097e678106f790ac988f5ed",
+    "codex-rs/tui/src/app_event.rs": "c65785d2d3770b1cd620c2522192a24cbc673e4882370d3d45e1eece8a5dfb98",
+    "codex-rs/tui/src/bottom_pane/chat_composer.rs": "f7f73ea787c6ab5704260cccd649105e648002c28f5642b72b007385b5a4cfeb",
+    "codex-rs/tui/src/bottom_pane/chat_composer/agents_navigation.rs": "20402a33339d56fb3e8d6d2cabcb7efb7f5882cfb82b633fb6404ff816545d4a",
+    "codex-rs/tui/src/bottom_pane/chat_composer/agents_navigation_tests.rs": "545de019691aea6c0cca8db16ef50a15511f4700a0c4781d36bad35c41f239f0",
+    "codex-rs/tui/src/bottom_pane/mod.rs": "25fac8845e82669c4e9ecdf9eaf58ba5f19f046644a0b0f0458c35c09efe6cce",
+    "codex-rs/tui/src/bottom_pane/subagent_panel.rs": "fe810ed93da93b37828286af5af99cb46ea89aaea2bffb17502f12cfc9d339df",
+    "codex-rs/tui/src/bottom_pane/tests/subagent_panel_navigation_tests.rs": "56f558d6d4e364b8c6557f34cb735056161d979f111a75417e96f90fd1689006",
+    "codex-rs/tui/src/chatwidget.rs": "94bc8f11468b6a76b1c411e9bf3b2e6cff31b58b7a4ba6142e31d1ec0a3514cb",
+    "codex-rs/tui/src/chatwidget/slash_dispatch.rs": "bd783171ad0eaf2f24ff1cd9d692546166fca8480c2927177a3b979bbe7ca803",
+    "codex-rs/tui/src/chatwidget/tests/slash_commands.rs": "42dadd3b68c6034fb9bfe8b35d88e698c1c25b9f44319d8a3e9fc905057734c2",
+    "scripts/evaluate-subagent-panel.mjs": "5adbf520b0157b64e79e44ab5eb46e95e285adeb2bab9b3f0be6accd36cb685c",
+    "scripts/subagent-panel-test-runner.mjs": "a22880d457079e2878716afafde963c3e31d7f17dd64ab52789bcf71b5656802"
+  },
+  "executable": {
+    "version": "codex-cli 0.0.0",
+    "sha256": "e0f5f9a242725899cbaa96f8e4d6c5ae74051dca4e45d5b158fcc64b503d2d15"
+  },
+  "runtimeCompanion": {
+    "mode": "explicit-companion",
+    "program": "Locally installed signed ChatGPT application companion; not redistributed",
+    "sha256": "79a93adf3878978f076702e87fa3d91af490e00b8d8ebdc07770ef975c060879"
+  },
+  "pipeline": [
+    {
+      "program": "rustup",
+      "args": [
+        "run",
+        "nightly",
+        "cargo",
+        "fmt",
+        "-p",
+        "codex-tui"
+      ],
+      "code": 0
+    },
+    {
+      "program": "cargo",
+      "args": [
+        "test",
+        "--locked",
+        "-p",
+        "codex-tui",
+        "--lib",
+        "subagent_panel",
+        "--",
+        "--test-threads=1"
+      ],
+      "code": 0
+    },
+    {
+      "program": "cargo",
+      "args": [
+        "test",
+        "--locked",
+        "-p",
+        "codex-tui",
+        "--lib",
+        "agent_panel_tests",
+        "--",
+        "--test-threads=1"
+      ],
+      "code": 0
+    },
+    {
+      "program": "cargo",
+      "args": [
+        "test",
+        "--locked",
+        "-p",
+        "codex-tui",
+        "--lib",
+        "agents_navigation",
+        "--",
+        "--test-threads=1"
+      ],
+      "code": 0
+    },
+    {
+      "program": "cargo",
+      "args": [
+        "clippy",
+        "--locked",
+        "-p",
+        "codex-tui",
+        "--all-targets",
+        "--no-deps",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "code": 0
+    },
+    {
+      "program": "cargo",
+      "args": [
+        "build",
+        "--locked",
+        "-p",
+        "codex-cli",
+        "--bin",
+        "codex"
+      ],
+      "code": 0
+    }
+  ],
+  "distinctTargetedTests": 55,
+  "groups": [
+    {
+      "filter": "subagent_panel",
+      "passed": 15
+    },
+    {
+      "filter": "app::tests::agent_panel_tests",
+      "passed": 10
+    },
+    {
+      "filter": "agents_navigation",
+      "passed": 10
+    },
+    {
+      "check": "thread-switch-regression",
+      "passed": 20,
+      "runner": "Nextest, four workers, isolated processes"
+    }
+  ],
+  "additionalDuplicateRun": {
+    "filter": "transcript_view::bookmark",
+    "passed": 3
+  },
+  "liveChecks": {
+    "twoNativeChildren": true,
+    "selectionSeparateFromViewed": true,
+    "parentDraftPreserved": true,
+    "parentManagedInputDisabled": true,
+    "escapePreservedReading": true,
+    "enterInspectedFromReading": true,
+    "readingAnchorRestored": true,
+    "newActivityRetained": true,
+    "normalCompletion": true,
+    "cancelPreservedWork": true,
+    "confirmedNativeInterruption": true,
+    "finalParentIdle": true,
+    "fixtureWorkspacesUnchanged": true,
+    "ownedSleeperCleanedUp": true
+  },
+  "limitations": [
+    "Entire TUI suite was not rerun for this increment; prior broad-suite results are recorded separately.",
+    "Linux and Windows interactive checks were not run.",
+    "Agent lifetime termination is not implemented; current controls interrupt turns.",
+    "Native Interrupted status is resumable and not final for agent wait; background terminals may remain.",
+    "Intel runtime-host source build remains blocked by a missing pinned V8 artifact; a compatible signed installed companion was used."
+  ]
+}

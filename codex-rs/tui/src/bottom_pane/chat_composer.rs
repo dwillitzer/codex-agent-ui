@@ -43,6 +43,9 @@
 //!
 //! Plain Left opens agents from an empty, active composer connected to a local daemon or remote App Server.
 //! Explicit editor remaps take precedence.
+//! The bottom pane may explicitly focus the parent-scoped agent panel with F6, or Down from an
+//! empty prompt. Popups and paste bursts take precedence; panel Enter inspects a thread and Escape
+//! returns focus without submitting or interrupting. Drafts remain in the composer during focus.
 //! Most key handling goes through [`ChatComposer::handle_key_event`], which dispatches to a
 //! popup-specific handler if a popup is visible and otherwise to
 //! [`ChatComposer::handle_key_event_without_popup`]. After every handled key, we call
@@ -514,6 +517,9 @@ pub enum InputResult {
 }
 
 fn parent_owned_command_is_allowed(command: SlashCommand, args: &str) -> bool {
+    if command == SlashCommand::MultiAgents {
+        return matches!(args.trim(), "" | "compact" | "expand" | "focus");
+    }
     if matches!(
         command,
         SlashCommand::Export | SlashCommand::Title | SlashCommand::Statusline

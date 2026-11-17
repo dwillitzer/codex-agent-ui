@@ -479,6 +479,11 @@ pub(crate) enum AppEvent {
     /// Open the agent picker for switching active threads.
     OpenAgentPicker,
     SetAgentPanelCollapsed(bool),
+    RestoreAgentPanelBookmark(ThreadId),
+    AgentPanelStopTurn {
+        thread_id: ThreadId,
+        confirmed: bool,
+    },
     /// Merge a completed root-scoped agent-picker refresh without blocking terminal input.
     AgentPickerThreadsLoaded {
         primary_thread_id: ThreadId,

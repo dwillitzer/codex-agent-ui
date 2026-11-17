@@ -997,6 +997,9 @@ impl BottomPane {
             self.request_redraw();
             InputResult::None
         } else {
+            if self.handle_subagent_panel_key(key_event) {
+                return InputResult::None;
+            }
             if self.handle_inline_banner_key(key_event) {
                 return InputResult::None;
             }
@@ -1795,6 +1798,100 @@ impl BottomPane {
         if self.pending_thread_approvals.set_threads(threads) {
             self.request_redraw();
         }
+    }
+
+    pub(crate) fn subagent_panel_focused(&self) -> bool {
+        self.subagent_panel.focused() && self.no_modal_or_popup_active()
+    }
+
+    pub(crate) fn handle_subagent_panel_navigation_key(&mut self, key: KeyEvent) -> bool {
+        self.no_modal_or_popup_active() && self.handle_subagent_panel_key(key)
+    }
+
+    fn handle_subagent_panel_key(&mut self, key: KeyEvent) -> bool {
+        if key.kind == KeyEventKind::Release {
+            return false;
+        }
+        if self.subagent_panel.focused() {
+            if key.modifiers.is_empty() {
+                match key.code {
+                    KeyCode::Up => self.subagent_panel.move_selection(false),
+                    KeyCode::Down => self.subagent_panel.move_selection(true),
+                    KeyCode::Enter => {
+                        if let Some(id) = self.subagent_panel.selected() {
+                            self.app_event_tx.send(AppEvent::SelectAgentThread(id));
+                        }
+                        self.subagent_panel.blur();
+                    }
+                    KeyCode::Esc | KeyCode::F(6) => self.subagent_panel.blur(),
+                    KeyCode::Char('a') => {
+                        if let Some(thread_id) = self.subagent_panel.selected() {
+                            self.app_event_tx.send(AppEvent::AgentPanelStopTurn {
+                                thread_id,
+                                confirmed: false,
+                            });
+                        }
+                        self.subagent_panel.blur();
+                    }
+                    _ => {
+                        self.subagent_panel.blur();
+                        self.request_redraw();
+                        return false;
+                    }
+                }
+                if !self.subagent_panel.focused() {
+                    self.suppress_current_view_key_until_release(
+                        KeyBinding::from_event(key),
+                        Instant::now(),
+                        ActivationKeySuppression::ViewTransition,
+                    );
+                }
+                self.request_redraw();
+                return true;
+            }
+            self.subagent_panel.blur();
+            self.request_redraw();
+            return false;
+        }
+        let down = key_hint::plain(KeyCode::Down).is_press(key);
+        let f6 = key_hint::plain(KeyCode::F(6)).is_press(key);
+        if !(down || f6) || !self.composer.subagent_panel_navigation_available(down) {
+            return false;
+        }
+        // Explicit user bindings and chord prefixes take precedence over this shortcut.
+        let claimed = crate::keymap::keymap_action_ids()
+            .filter(|action| {
+                f6 || matches!(
+                    action.context,
+                    KeymapContext::Global | KeymapContext::Chat | KeymapContext::Voice
+                )
+            })
+            .any(|action| {
+                crate::keymap::bindings_for_action(
+                    &self.keymap,
+                    action.context.config_name(),
+                    action.action,
+                )
+                .is_some_and(|bindings| bindings.is_pressed(key))
+            })
+            || self
+                .keymap
+                .chords
+                .bindings
+                .iter()
+                .any(|binding| binding.chord.prefix.is_press(key));
+        if claimed {
+            return false;
+        }
+        self.focus_subagent_panel()
+    }
+
+    pub(crate) fn focus_subagent_panel(&mut self) -> bool {
+        let focused = self.subagent_panel.focus();
+        if focused {
+            self.request_redraw();
+        }
+        focused
     }
 
     pub(crate) fn set_subagent_panel(
@@ -2732,6 +2829,9 @@ impl Renderable for BottomPane {
         self.as_renderable().desired_height(width)
     }
     fn cursor_pos(&self, area: Rect) -> Option<(u16, u16)> {
+        if self.subagent_panel_focused() {
+            return None;
+        }
         self.as_renderable().cursor_pos(area)
     }
 
@@ -2746,6 +2846,8 @@ mod tests {
     mod actionable_banner_tests;
     #[path = "picker_hint_tests.rs"]
     mod picker_hint_tests;
+    #[path = "subagent_panel_navigation_tests.rs"]
+    mod subagent_panel_navigation_tests;
 
     use super::*;
     use crate::app::app_server_requests::ResolvedAppServerRequest;

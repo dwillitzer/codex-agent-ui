@@ -222,6 +222,71 @@ fn agent_panel_state_distinguishes_idle_waiting_completed_and_disconnected() {
 }
 
 #[tokio::test]
+async fn agent_panel_stop_is_limited_to_this_parents_children_and_backend() {
+    let (mut app, _, _) = make_test_app_with_channels().await;
+    let root = ThreadId::from_u128(1);
+    let child = ThreadId::from_u128(2);
+    let foreign = ThreadId::from_u128(3);
+    let backend = crate::backend_id::BackendId::new();
+    let other_backend = crate::backend_id::BackendId::new();
+    app.primary_thread_id = Some(root);
+    app.track_agent_panel_notification(&spawn(root, child, Some("worker")));
+    app.track_agent_panel_notification(&spawn(foreign, ThreadId::from_u128(4), None));
+    app.backend_registry.observe(backend, root);
+    // A child discovered through the root-scoped list may not yet have its own event subscription.
+    assert!(app.can_stop_agent_panel_turn(child, backend));
+    app.backend_registry.observe(backend, child);
+    app.backend_registry.observe(backend, foreign);
+    assert!(app.can_stop_agent_panel_turn(child, backend));
+    assert!(!app.can_stop_agent_panel_turn(root, backend));
+    assert!(!app.can_stop_agent_panel_turn(foreign, backend));
+    assert!(!app.can_stop_agent_panel_turn(child, other_backend));
+    app.primary_thread_id = Some(foreign);
+    assert!(!app.can_stop_agent_panel_turn(child, backend));
+}
+
+#[tokio::test]
+async fn agent_panel_focus_owns_enter_and_escape_while_reading_history() -> Result<()> {
+    let (mut app, mut events, _) = make_test_app_with_channels().await;
+    let mut server = start_config_write_test_app_server(&app).await?;
+    let mut tui = crate::tui::test_support::make_test_tui()?;
+    let root = ThreadId::from_u128(1);
+    let child = ThreadId::from_u128(2);
+    app.primary_thread_id = Some(root);
+    app.active_thread_id = Some(root);
+    app.upsert_agent_picker_thread(root, None, None, false);
+    let event = spawn(root, child, Some("worker"));
+    app.track_agent_panel_notification(&event);
+    app.cache_collab_receiver_threads_for_notification(&event);
+    app.sync_subagent_panel();
+    read_side_history(&mut app, &mut tui, "panel-reading")?;
+    assert!(!app.transcript_view.is_following());
+    assert!(
+        app.chat_widget
+            .handle_subagent_panel_navigation_key(KeyCode::F(6).into())
+    );
+    app.handle_tui_event(&mut tui, &mut server, TuiEvent::Key(KeyCode::Esc.into()))
+        .await?;
+    assert!(!app.transcript_view.is_following());
+    assert!(!app.chat_widget.subagent_panel_focused());
+    assert!(
+        app.chat_widget
+            .handle_subagent_panel_navigation_key(KeyCode::F(6).into())
+    );
+    app.chat_widget
+        .handle_subagent_panel_navigation_key(KeyCode::Down.into());
+    while events.try_recv().is_ok() {}
+    app.handle_tui_event(&mut tui, &mut server, TuiEvent::Key(KeyCode::Enter.into()))
+        .await?;
+    assert!(
+        std::iter::from_fn(|| events.try_recv().ok())
+            .any(|event| matches!(event, AppEvent::SelectAgentThread(id) if id == child))
+    );
+    assert!(!app.transcript_view.is_following());
+    Ok(())
+}
+
+#[tokio::test]
 async fn agent_panel_disconnect_discards_stale_context_but_retains_membership() {
     let (mut app, _, _) = make_test_app_with_channels().await;
     let root = ThreadId::from_u128(1);

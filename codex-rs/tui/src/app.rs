@@ -1181,6 +1181,16 @@ impl App {
             return Ok(AppRunControl::Continue);
         }
         self.cancel_primed_browsing_for_event(&event);
+        // Explicit panel focus owns Enter/Escape before a reading transcript can use them to
+        // jump to its latest output. Popups, overlays, and disconnected input retain priority.
+        if self.overlay.is_none()
+            && !self.reconnect.offline
+            && self.chat_widget.subagent_panel_focused()
+            && let TuiEvent::Key(key) = &event
+            && self.chat_widget.handle_subagent_panel_navigation_key(*key)
+        {
+            return Ok(AppRunControl::Continue);
+        }
         let voice_toggle = |app: &Self, key: KeyEvent| {
             key.kind == KeyEventKind::Press
                 && app

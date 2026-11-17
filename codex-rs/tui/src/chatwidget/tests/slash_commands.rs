@@ -3820,6 +3820,8 @@ async fn raw_slash_command_toggles_and_accepts_on_off_args() {
 #[tokio::test]
 async fn subagent_panel_commands_do_not_submit_model_input() {
     let (mut chat, mut rx, mut op_rx) = make_chatwidget_manual(None).await;
+    chat.dispatch_command_with_args(SlashCommand::MultiAgents, "focus".into(), Vec::new());
+    assert!(op_rx.try_recv().is_err());
     for (arg, collapsed) in [("compact", true), ("expand", false)] {
         chat.dispatch_command_with_args(SlashCommand::MultiAgents, arg.into(), Vec::new());
         let events = std::iter::from_fn(|| rx.try_recv().ok()).collect::<Vec<_>>();
@@ -3845,7 +3847,7 @@ async fn subagent_panel_invalid_argument_reports_usage() {
         .map(|lines| lines_to_single_string(lines))
         .collect::<Vec<_>>()
         .join("\n");
-    assert!(rendered.contains("Usage: /subagents [compact|expand]"));
+    assert!(rendered.contains("Usage: /subagents [compact|expand|focus]"));
     assert!(op_rx.try_recv().is_err());
 }
 

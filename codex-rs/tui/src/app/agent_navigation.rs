@@ -44,6 +44,7 @@ pub(crate) struct AgentNavigationState {
     pub(super) panel_details: HashMap<ThreadId, super::agent_panel::AgentPanelDetails>,
     pub(super) panel_collapsed: bool,
     pub(super) panel_discovery_root: Option<ThreadId>,
+    pub(super) panel_bookmarks: HashMap<ThreadId, super::agent_panel::AgentPanelBookmark>,
     /// Latest picker metadata for each tracked thread id.
     threads: HashMap<ThreadId, AgentPickerThreadEntry>,
     /// First-seen order for keyboard cycling. The picker groups waiting threads first.
@@ -271,6 +272,7 @@ impl AgentNavigationState {
     /// to a pristine single-session state.
     pub(crate) fn clear(&mut self) {
         self.panel_details.clear();
+        self.panel_bookmarks.clear();
         self.panel_discovery_root = None;
         self.threads.clear();
         self.order.clear();
@@ -289,6 +291,7 @@ impl AgentNavigationState {
     /// would leave ghost rows in `/subagents`.
     pub(crate) fn remove(&mut self, thread_id: ThreadId) {
         self.panel_details.remove(&thread_id);
+        self.panel_bookmarks.remove(&thread_id);
         self.threads.remove(&thread_id);
         self.order.retain(|candidate| *candidate != thread_id);
         self.stopped_threads.remove(&thread_id);

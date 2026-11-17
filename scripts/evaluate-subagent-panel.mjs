@@ -129,6 +129,32 @@ const checks = [
     join(root, "codex-rs"),
   ],
   [
+    "transcript-bookmark-regression",
+    "cargo",
+    ["test", "--locked", "-p", "codex-tui", "--lib", "transcript_view::bookmark"],
+    join(root, "codex-rs"),
+  ],
+  [
+    "thread-switch-regression",
+    "cargo",
+    [
+      "nextest",
+      "run",
+      "--locked",
+      "-p",
+      "codex-tui",
+      "--lib",
+      "--profile",
+      "local",
+      "--test-threads",
+      "4",
+      "--no-fail-fast",
+      "-E",
+      "test(open_agent_picker) | test(select_uncached_agent_thread) | test(replay_thread_snapshot_restores_draft) | test(embedded_session_switch_routes_background_approval_and_restores_draft) | test(agents_overview_stop_) | test(transcript_view::bookmark) | test(replace_chat_widget)",
+    ],
+    join(root, "codex-rs"),
+  ],
+  [
     "tui-suite",
     "cargo",
     [

@@ -18,6 +18,14 @@ use codex_protocol::ThreadId;
 use std::time::Duration;
 use std::time::Instant;
 
+pub(super) struct AgentPanelBookmark(pub(crate) crate::transcript_view::TranscriptBookmark);
+
+impl std::fmt::Debug for AgentPanelBookmark {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("AgentPanelBookmark")
+    }
+}
+
 #[derive(Debug, Default)]
 pub(super) struct AgentPanelDetails {
     pub root: Option<ThreadId>,
@@ -137,6 +145,24 @@ impl AgentPanelDetails {
 }
 
 impl App {
+    pub(super) fn can_stop_agent_panel_turn(
+        &self,
+        thread_id: ThreadId,
+        backend: crate::backend_id::BackendId,
+    ) -> bool {
+        self.primary_thread_id.is_some()
+            && Some(thread_id) != self.primary_thread_id
+            && self
+                .agent_navigation
+                .panel_details
+                .get(&thread_id)
+                .is_some_and(|details| details.root == self.primary_thread_id)
+            && self.backend_registry.owner(thread_id).or_else(|| {
+                self.primary_thread_id
+                    .and_then(|root| self.backend_registry.owner(root))
+            }) == Some(backend)
+    }
+
     pub(super) fn remember_agent_panel_thread(&mut self, root: ThreadId, thread: &Thread) {
         let Ok(id) = ThreadId::from_string(&thread.id) else {
             return;
@@ -424,7 +450,7 @@ impl App {
             self.refresh_agent_picker_with_handle(handle, root);
         }
         let current = self.current_displayed_thread_id();
-        let rows = self
+        let mut rows: Vec<_> = self
             .agent_navigation
             .visible_threads()
             .into_iter()
@@ -440,6 +466,13 @@ impl App {
                     self.agent_navigation.pending_approvals.contains(&id),
                 );
                 Some(SubagentPanelRow {
+                    id,
+                    parent: false,
+                    input_target: if self.agent_navigation.is_parent_owned(id) {
+                        "disabled (parent-managed)".into()
+                    } else {
+                        self.thread_label(id)
+                    },
                     label: self.thread_label(id),
                     state: state.into(),
                     model_context: details.model_context(),
@@ -451,6 +484,24 @@ impl App {
                 })
             })
             .collect();
+        if let Some(root) = root {
+            rows.insert(
+                0,
+                SubagentPanelRow {
+                    id: root,
+                    parent: true,
+                    input_target: "Main".into(),
+                    label: "Main".into(),
+                    state: "parent session".into(),
+                    model_context: "Return to the parent transcript".into(),
+                    task: String::new(),
+                    active: false,
+                    current: current == Some(root),
+                    started: None,
+                    elapsed: None,
+                },
+            );
+        }
         self.chat_widget
             .set_subagent_panel(rows, self.agent_navigation.panel_collapsed);
     }

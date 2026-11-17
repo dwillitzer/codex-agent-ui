@@ -1508,6 +1508,14 @@ impl ChatWidget {
         self.bottom_pane.set_pending_thread_approvals(threads);
     }
 
+    pub(crate) fn handle_subagent_panel_navigation_key(&mut self, key: KeyEvent) -> bool {
+        self.bottom_pane.handle_subagent_panel_navigation_key(key)
+    }
+
+    pub(crate) fn subagent_panel_focused(&self) -> bool {
+        self.bottom_pane.subagent_panel_focused()
+    }
+
     pub(crate) fn set_subagent_panel(
         &mut self,
         rows: Vec<crate::bottom_pane::subagent_panel::SubagentPanelRow>,

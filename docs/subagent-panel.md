@@ -14,10 +14,10 @@ preview when the backend supplies one. Additional children remain in `/subagents
 For example (synthetic data):
 
 ```text
-Agents: 1 active / 2 · /subagents to inspect · /subagents compact
-· /root/source-review · running · 1m14s
+Agents: 1 active / 2 · F6 select · /subagents compact
+ · /root/source-review · running · 1m14s
   review-model · ctx 50% used (60K/108K) · Review source and report findings
-· /root/tests · done · 0m42s
+ · /root/tests · done · 0m42s
   test-model · ctx 12% used (24K/108K) · Run regression tests
 ```
 
@@ -26,10 +26,25 @@ Agents: 1 active / 2 · /subagents to inspect · /subagents compact
   shortcuts also continue to work.
 - `/subagents compact`: retain the count but collapse the preview rows.
 - `/subagents expand`: restore the preview rows.
+- F6 focuses the inline panel, including while a draft is present. Down also focuses it from an
+  empty prompt. Popups, paste bursts, and explicit key remaps take precedence. `/subagents focus`
+  provides a command alternative.
+- While focused, Up/Down select in stable spawn order, Enter watches that thread, and Escape
+  returns to the composer without interrupting work. Select Main to return to the parent. The
+  `>` cursor marks selection; `●` marks the transcript currently viewed. The panel scrolls its
+  bounded preview to keep the selected row visible, including when compacted.
+- `a` on a child offers a cancel-first confirmation to stop its current turn. This preserves the
+  agent and its history; it does not end its lifetime. The parent is excluded from this action.
+  Native background terminals can remain running after turn interruption; use the existing `/stop`
+  controls for those processes. Codex's native agent wait treats interruption as resumable rather
+  than final, so interrupting a child does not complete a parent that is waiting for its final result.
 
 Inspection preserves the backend's existing direct-input restrictions for parent-owned children.
 It does not create another agent, resume an unrelated task, or send an instruction to the child.
 Completed children remain inspectable until archived. Collapsing is session-local.
+When viewing a child, a banner names the transcript and indicates where input is permitted.
+Thread switching uses the existing per-thread draft state and saves transcript reading bookmarks;
+returning restores the prior reading position, with unseen activity tracked by the native viewport.
 
 ## Data and lifecycle contract
 
@@ -58,6 +73,7 @@ event. An older turn's completion cannot finish a newer observed turn. Disconnec
 live presentation to `unknown (reconnecting)` and clears context until fresh authoritative state
 arrives. Resetting the primary session clears panel membership. Narrow terminals clip bounded rows
 and omit task previews; the panel does not wrap unbounded task text into the composer.
+The active count describes child-turn activity, not all background operating-system processes.
 
 ## Implementation
 
@@ -65,17 +81,24 @@ and omit task previews; the panel does not wrap unbounded task text into the com
 - `app/agent_navigation.rs`: cache lifetime follows existing navigation state.
 - `app/agent_picker.rs`: existing asynchronous descendant discovery also hydrates panel metadata.
 - `app/session_lifecycle.rs`: picker descriptions expose child model/context/task.
-- `bottom_pane/subagent_panel.rs`: bounded render-only preview; selection remains in the existing
-  picker, so composer typing keys keep their original behavior.
+- `bottom_pane/subagent_panel.rs`: bounded preview and explicit focus/selection state; IDs keep
+  selection stable through live updates. The existing picker remains available for the full list.
 
 No app-server protocol or core agent-execution behavior changes are required by this implementation.
 The feature affects this fork's terminal client, not the desktop app or IDE extension.
+
+Ending an agent is a separate future backend capability. The existing app-server API exposes turn
+interruption, archive/delete, and subscription release, but no dedicated agent-lifetime close
+request. The UI deliberately offers only interruption until a scoped, non-destructive lifetime
+operation can be implemented and tested in the backend.
 
 ## Evaluation and upstream contribution
 
 See [the evaluation record](subagent-panel-evaluation.md) for commands, results, limits, and the
 acceptance matrix, and [the live TUI evaluation](subagent-panel-live-evaluation.md) for the Herdr
-run and companion-runtime prerequisite. The upstream contribution policy currently accepts issue-based findings and
+run and companion-runtime prerequisite. [The inline navigation evaluation](subagent-panel-navigation-evaluation.md)
+records the follow-up focus, draft, bookmark, and turn-interruption checks.
+The upstream contribution policy currently accepts issue-based findings and
 design discussions rather than external code PRs. A tested fork and implementation reference can
 accompany [the existing feature request](https://github.com/openai/codex/issues/43148).
 The [prepared upstream report](subagent-panel-upstream-report.md) is ready for review; it has not

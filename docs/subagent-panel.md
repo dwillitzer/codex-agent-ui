@@ -125,6 +125,8 @@ The [status-filter evaluation](subagent-panel-status-filter-evaluation.md) recor
 All/Active/Done/Failed tabs, approval awareness, and 73 selected passing tests plus live checks.
 The [visual refinement evaluation](subagent-panel-visual-refinement-evaluation.md) records the
 subsequent hollow-circle markers and active-tab contrast checks.
+The [visual walkthrough](subagent-panel-visual-walkthrough.md) includes a fresh-session recording,
+76 passing selected tests, and the outcome-preservation fix found during hands-on inspection.
 The upstream contribution policy currently accepts issue-based findings and
 design discussions rather than external code PRs. A tested fork and implementation reference can
 accompany [the existing feature request](https://github.com/openai/codex/issues/43148).

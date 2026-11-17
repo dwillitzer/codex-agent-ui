@@ -1,0 +1,368 @@
+{
+  "date": "2026-11-17",
+  "platform": "Intel macOS 26.7.2",
+  "branch": "feat/parent-agent-panel",
+  "implementationBase": "f009f81a116d3ce8d65b86c82bc6510d6d4d10a8",
+  "fix": "Preserve observed terminal outcomes across NotLoaded residency notifications; new turns still replace outcomes",
+  "sourceHashes": {
+    "codex-rs/tui/src/app/agent_panel.rs": "ff99c8d24aa21f3ef888f12aa328e88d778e8a92db40fb9bc917df734c333fa0",
+    "codex-rs/tui/src/app/tests/agent_panel_tests.rs": "24ab9a99313b3f4a29ab0cafa1e36f825cf5537ea48c2f01a8b6b64e29a1ed0a"
+  },
+  "executable": {
+    "path": "codex-rs/target/debug/codex",
+    "version": "0.0.0",
+    "sha256": "caf8bcd82a80314a5b20a642b739e0fe78a01bab18cd2835c5e861ad950f2ddb"
+  },
+  "checks": [
+    {
+      "name": "focused-tests",
+      "program": "cargo",
+      "args": [
+        "nextest",
+        "run",
+        "--locked",
+        "-p",
+        "codex-tui",
+        "--lib",
+        "--profile",
+        "local",
+        "--test-threads",
+        "4",
+        "--no-fail-fast",
+        "-E",
+        "test(subagent_panel) | test(agent_panel_tests) | test(agents_navigation) | test(pending_thread_approvals) | test(inactive_thread_approval)"
+      ],
+      "code": 0
+    },
+    {
+      "name": "clippy",
+      "program": "cargo",
+      "args": [
+        "clippy",
+        "--locked",
+        "-p",
+        "codex-tui",
+        "--all-targets",
+        "--no-deps",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "code": 0
+    },
+    {
+      "name": "cli",
+      "program": "cargo",
+      "args": ["build", "--locked", "-p", "codex-cli", "--bin", "codex"],
+      "code": 0
+    },
+    {
+      "name": "thread-switch",
+      "program": "cargo",
+      "args": [
+        "nextest",
+        "run",
+        "--locked",
+        "-p",
+        "codex-tui",
+        "--lib",
+        "--profile",
+        "local",
+        "--test-threads",
+        "4",
+        "--no-fail-fast",
+        "-E",
+        "test(open_agent_picker) | test(select_uncached_agent_thread) | test(replay_thread_snapshot_restores_draft) | test(embedded_session_switch_routes_background_approval_and_restores_draft) | test(agents_overview_stop_) | test(transcript_view::bookmark) | test(replace_chat_widget)"
+      ],
+      "code": 0
+    }
+  ],
+  "tests": {
+    "focused": 56,
+    "threadSwitch": 20,
+    "distinctPassed": 76,
+    "failed": 0,
+    "runner": "Nextest isolated processes; temporary HOME; RUST_MIN_STACK=8388608",
+    "names": {
+      "focused": [
+        "app::tests::agent_panel_tests::agent_assignment_history_restores_latest_without_overwriting_live_updates",
+        "app::pending_interactive_replay::tests::thread_event_store_reports_pending_thread_approvals",
+        "app::tests::agent_panel_tests::agent_assignment_direct_cycle_stays_in_parent_family",
+        "app::tests::agent_panel_tests::agent_assignment_uses_current_parent_summary_instead_of_initial_prompt",
+        "app::tests::agent_panel_tests::agent_panel_disconnect_discards_stale_context_but_retains_membership",
+        "app::tests::agent_panel_tests::agent_context_unknown_is_not_zero_and_percent_is_clamped",
+        "app::tests::agent_panel_tests::agent_panel_ignores_old_completion_and_preserves_model_on_metadata_upsert",
+        "app::tests::agent_panel_tests::agent_panel_focus_owns_enter_and_escape_while_reading_history",
+        "app::tests::agent_panel_tests::agent_panel_is_root_scoped_and_uses_latest_child_context",
+        "app::tests::agent_panel_tests::agent_panel_model_reroute_invalidates_previous_model_context",
+        "app::tests::agent_panel_tests::agent_panel_resolves_out_of_order_nested_lineage_without_showing_foreign_threads",
+        "app::tests::agent_panel_tests::agent_panel_state_distinguishes_idle_waiting_completed_and_disconnected",
+        "app::tests::agent_panel_tests::agent_panel_status_filter_preserves_explicit_failure_over_generic_completion",
+        "app::tests::agent_panel_tests::agent_panel_status_filter_keeps_viewed_child_approval_active_and_globally_visible",
+        "app::tests::agent_panel_tests::agent_panel_status_filter_survives_widget_replacement_and_resets_for_new_parent",
+        "app::tests::agent_panel_tests::agent_panel_stop_is_limited_to_this_parents_children_and_backend",
+        "app::tests::agent_panel_tests::agent_panel_unloading_preserves_observed_turn_outcomes_and_filter_membership",
+        "app::tests::agent_panel_tests::agent_picker_metadata_keeps_existing_watch_action",
+        "app::tests::agents_navigation_tests::externally_archived_thread_keeps_advertised_agents_navigation",
+        "app::tests::agents_navigation_tests::agents_navigation_opens_the_command_center_on_every_target",
+        "app::tests::agents_navigation_tests::pending_windows_sandbox_setup_blocks_thread_replacement",
+        "app::tests::agents_navigation_tests::refresh_agent_picker_thread_liveness_prunes_closed_metadata_only_threads",
+        "app::tests::inactive_thread_approval_badge_clears_after_turn_completion_notification",
+        "app::tests::inactive_thread_approval_bubbles_into_active_view",
+        "bottom_pane::chat_composer::agents_navigation_tests::agents_navigation_hint_snapshots",
+        "app::tests::refresh_pending_thread_approvals_only_lists_inactive_threads",
+        "bottom_pane::chat_composer::agents_navigation_tests::left_respects_attachments_pastes_and_other_input_surfaces",
+        "bottom_pane::chat_composer::agents_navigation_tests::left_navigates_only_from_an_empty_prompt",
+        "bottom_pane::chat_composer::agents_navigation_tests::left_respects_editor_and_vim_history_remaps",
+        "bottom_pane::chat_composer::agents_navigation_tests::parent_owned_thread_allows_safe_command_selected_from_prefix",
+        "bottom_pane::chat_composer::agents_navigation_tests::parent_owned_thread_allows_local_commands",
+        "bottom_pane::pending_thread_approvals::tests::desired_height_empty",
+        "bottom_pane::pending_thread_approvals::tests::render_multiple_threads_snapshot",
+        "bottom_pane::pending_thread_approvals::tests::render_single_thread_snapshot",
+        "bottom_pane::subagent_panel::tests::active_filter_has_high_contrast_at_wide_and_narrow_widths",
+        "bottom_pane::subagent_panel::tests::compact_keeps_completion_visible_and_expands_without_losing_rows",
+        "bottom_pane::subagent_panel::tests::empty_filtered_results_without_parent_do_not_lose_keyboard_focus",
+        "bottom_pane::subagent_panel::tests::empty_panel_uses_no_rows",
+        "bottom_pane::subagent_panel::tests::filtered_selection_reconciles_completion_without_changing_view",
+        "bottom_pane::subagent_panel::tests::focus_tracks_identity_across_completion_updates_and_windows_selection",
+        "bottom_pane::subagent_panel::tests::preview_is_bounded_and_prioritizes_current_and_active_agents",
+        "bottom_pane::subagent_panel::tests::persistent_panel_snapshot",
+        "bottom_pane::subagent_panel::tests::row_emphasis_distinguishes_viewed_selected_and_other_agents",
+        "bottom_pane::subagent_panel::tests::rendering_clips_to_the_supplied_viewport",
+        "bottom_pane::subagent_panel::tests::status_filters_use_explicit_outcomes_and_keep_approval_awareness",
+        "bottom_pane::tests::subagent_panel_navigation_tests::subagent_panel_editor_remap_and_popup_take_precedence",
+        "bottom_pane::tests::subagent_panel_navigation_tests::subagent_panel_empty_filter_enter_returns_main_and_ignores_hidden_child",
+        "bottom_pane::tests::subagent_panel_navigation_tests::subagent_panel_enter_repeat_cannot_submit_the_draft",
+        "bottom_pane::tests::subagent_panel_navigation_tests::subagent_panel_enter_inspects_selected_thread_without_submitting_input",
+        "bottom_pane::tests::subagent_panel_navigation_tests::subagent_panel_escape_preserves_draft_and_does_not_interrupt",
+        "bottom_pane::tests::subagent_panel_navigation_tests::subagent_panel_f6_respects_custom_editor_binding",
+        "bottom_pane::tests::subagent_panel_navigation_tests::subagent_panel_f_cycles_once_per_press_without_editing_the_draft",
+        "bottom_pane::tests::subagent_panel_navigation_tests::subagent_panel_navigation_works_when_direct_input_is_disabled",
+        "chatwidget::tests::slash_commands::subagent_panel_commands_do_not_submit_model_input",
+        "bottom_pane::tests::subagent_panel_navigation_tests::subagent_panel_stop_requests_confirmation_for_selected_id",
+        "chatwidget::tests::slash_commands::subagent_panel_invalid_argument_reports_usage"
+      ],
+      "threadSwitch": [
+        "app::tests::open_agent_picker_clears_running_hint_from_completed_snapshot",
+        "app::tests::open_agent_picker_allows_existing_agent_threads_when_feature_is_disabled",
+        "app::tests::open_agent_picker_keeps_missing_threads_for_replay",
+        "app::tests::open_agent_picker_marks_terminal_read_errors_closed",
+        "app::tests::open_agent_picker_preserves_cached_metadata_for_replay_threads",
+        "app::tests::open_agent_picker_marks_loaded_threads_open",
+        "app::tests::open_agent_picker_preserves_running_hints_until_observed_completion",
+        "app::tests::open_agent_picker_prompts_when_subagents_disabled",
+        "app::tests::open_agent_picker_prunes_terminal_metadata_only_threads",
+        "app::tests::open_agent_picker_refreshes_replay_only_path_backed_liveness",
+        "app::tests::open_agent_picker_selects_path_backed_agent",
+        "app::tests::replace_chat_widget_reseeds_collab_agent_metadata_for_replay",
+        "app::tests::replay_thread_snapshot_restores_draft_and_queued_input",
+        "app::tests::select_uncached_agent_thread_still_refreshes_liveness",
+        "app::tests::session_lifecycle_requests::agents_overview_stop_uses_history_mode_for_turn_lookup",
+        "transcript_view::bookmark::tests::cancel_restores_a_group_replaced_during_browsing",
+        "transcript_view::bookmark::tests::cancel_restores_both_positions_after_resize_and_pagination",
+        "transcript_view::bookmark::tests::following_origin_returns_to_new_output_in_original_presentation",
+        "app::tests::safety_buffering::embedded_session_switch_routes_background_approval_and_restores_draft",
+        "app::tests::session_lifecycle_requests::agents_overview_stop_uses_full_history_after_legacy_negotiation"
+      ]
+    }
+  },
+  "live": {
+    "workspace": "codex-ui-fresh-walkthrough",
+    "pane": "w3D:p1",
+    "parentThreadId": "01a1eb42-56fe-7e50-9705-8a6ec6ca8d15",
+    "freshSession": true,
+    "nativeChildren": [
+      {
+        "name": "source_review",
+        "context": "forked parent",
+        "delaySeconds": 45
+      },
+      {
+        "name": "backlog_review",
+        "context": "fresh",
+        "delaySeconds": 150
+      }
+    ],
+    "concurrent": true,
+    "bothCompleted": true,
+    "fixtures": {
+      "source.txt": {
+        "before": "e4652901f5907b85f7b197017bceb11838109e3053ca84580b418ff59cd883aa",
+        "after": "e4652901f5907b85f7b197017bceb11838109e3053ca84580b418ff59cd883aa",
+        "unchanged": true
+      },
+      "backlog.md": {
+        "before": "013f2b571979abb4e4497e4956363498a69219ebb358979c0836ef1c9462c008",
+        "after": "013f2b571979abb4e4497e4956363498a69219ebb358979c0836ef1c9462c008",
+        "unchanged": true
+      }
+    },
+    "draftSubmitted": false,
+    "observations": [
+      "Solid viewed-session marker independent of hollow keyboard selection",
+      "Active filter and draft restored after inspection",
+      "Done count remains 1 after completed-child inspection and unload",
+      "Failed empty state retains Main",
+      "Stop dialog defaults to Cancel; no stop sent",
+      "Final All shows two completed children with assignment/model/context/timing"
+    ],
+    "firstPassNote": "Resumed parent hit loaded-thread limit; two new children ran sequentially and exposed unload regression",
+    "stopNote": "Final-take dialog stayed open while child completed, then was cancelled; earlier first pass cancelled while running",
+    "privateCaptureHashes": {
+      "active-selected.png": "dde11af7217b022a01ea4dda56c012728f8ee26e1761873775a90d5226505789",
+      "forked-child.png": "9017395d91c9c1bc52ee43d2fcf5a31d4bcf04d966e6ef51f23f840b45dff5e6",
+      "fresh-child.png": "0a5c75111fec36f3ba6699a5ad9e7a212ab415cf58791d5a95e6cb2cc8ebcd96",
+      "draft-restored.png": "720aeac0bbcec633e136c02d81c1e3ca54221f5169f7e1b8b34e6ce9d329dcd3",
+      "done-retained.png": "c35ca1adcd7a867516026a34bcd8841ff0dd9e8f7518cd42b813cfd1f2a873fd",
+      "stop-confirmation.png": "8875e9fdc6e7d6aebc9c373314fe7690b55d146d4f31d9097cc0814a0abe1208",
+      "complete.png": "99d6946cfd8b1ec4c549e08336c0e608d249c0fa54260b2cdecaaee88b5a0ef5"
+    }
+  },
+  "recording": {
+    "rawDurationSeconds": 240.085,
+    "rawSha256": "ebff5d595c40a8f5179dd1d04f583e14d3da50580ac07088c7062e31bfed8150",
+    "rawShared": false,
+    "output": {
+      "path": "docs/evidence/subagent-panel-walkthrough.mp4",
+      "sha256": "f392ec081316ff58c375a312348fbc3228aca7fcf84aafe45450b7f33d167fce",
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 1600,
+          "height": 1214
+        }
+      ],
+      "format": {
+        "duration": "90.000000",
+        "size": "2177592"
+      }
+    },
+    "transcript": {
+      "path": "docs/evidence/subagent-panel-walkthrough.vtt",
+      "sha256": "378191cafb104b885f10cba87b863db3a01bbc9ddc26fe88134b0c83745f3c87"
+    },
+    "edits": {
+      "crop": {
+        "sourceWidth": 3008,
+        "sourceHeight": 1564,
+        "x": 872,
+        "y": 50,
+        "width": 2136,
+        "height": 1514
+      },
+      "scaledWidth": 1600,
+      "captionBandHeight": 80,
+      "chapters": [
+        {
+          "start": 18,
+          "end": 35,
+          "title": "Fresh parent: two native agents, forked and fresh context",
+          "outputStart": 0,
+          "outputEnd": 17
+        },
+        {
+          "start": 40,
+          "end": 49,
+          "title": "F6, F, Down: filter Active and highlight without switching",
+          "outputStart": 17,
+          "outputEnd": 26
+        },
+        {
+          "start": 54,
+          "end": 63,
+          "title": "Enter: inspect the running forked-context child",
+          "outputStart": 26,
+          "outputEnd": 35
+        },
+        {
+          "start": 68,
+          "end": 74,
+          "title": "Hollow circle + cursor: selected row; solid circle: open session",
+          "outputStart": 35,
+          "outputEnd": 41
+        },
+        {
+          "start": 97,
+          "end": 103,
+          "title": "Inspect the fresh-context child; parent-managed input stays disabled",
+          "outputStart": 41,
+          "outputEnd": 47
+        },
+        {
+          "start": 107,
+          "end": 113,
+          "title": "Return to Main: unsent draft and Active filter restored",
+          "outputStart": 47,
+          "outputEnd": 53
+        },
+        {
+          "start": 118,
+          "end": 124,
+          "title": "Done: inspect the completed source review",
+          "outputStart": 53,
+          "outputEnd": 59
+        },
+        {
+          "start": 130,
+          "end": 136,
+          "title": "Return to Main: known completion survives subscription unload",
+          "outputStart": 59,
+          "outputEnd": 65
+        },
+        {
+          "start": 144,
+          "end": 149,
+          "title": "Failed: explicit empty state; Main remains selectable",
+          "outputStart": 65,
+          "outputEnd": 70
+        },
+        {
+          "start": 154,
+          "end": 161,
+          "title": "A: stop-turn confirmation defaults to Cancel",
+          "outputStart": 70,
+          "outputEnd": 77
+        },
+        {
+          "start": 222,
+          "end": 235,
+          "title": "Both complete: assignment, model, context, and frozen elapsed time",
+          "outputStart": 77,
+          "outputEnd": 90
+        }
+      ],
+      "redaction": {
+        "outputRectangle": {
+          "x": 1230,
+          "y": 1110,
+          "width": 370,
+          "height": 104
+        },
+        "reason": "Unrelated Herdr completion notifications; agent panel rows unchanged",
+        "exit": 0
+      }
+    },
+    "qa": {
+      "chaptersInspected": 11,
+      "boundaryFramesInspected": 22,
+      "decodedFrames": 2700,
+      "redactionMaxLuma": 47,
+      "simulatedUiStates": false
+    }
+  },
+  "upstream": {
+    "target": "https://github.com/openai/codex/issues/43148",
+    "stateObserved": "open",
+    "draftPosted": false,
+    "contributionPolicyBlobSha": "67b10a1c9b855bc32082929129b5abbe3c1d7b35"
+  },
+  "limits": [
+    "No new full-suite run",
+    "No Linux/Windows UI validation",
+    "Live failing-child and approval dialogs not demonstrated; app-server fixtures cover states",
+    "No pause/kill/lifetime-close demonstration",
+    "Previously documented signed companion host is a local prerequisite and is not distributed"
+  ]
+}

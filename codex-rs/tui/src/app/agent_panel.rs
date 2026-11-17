@@ -146,10 +146,14 @@ impl AgentPanelDetails {
     }
 
     fn status_changed(&mut self, status: &ThreadStatus) {
-        // A list/status response can race a terminal turn event. Only an observed new turn or
-        // a refresh after lost events may replace explicit completion with generic activity.
+        // A list/status response can race a terminal turn event. Releasing a viewed thread's
+        // subscription changes residency, not its last turn outcome. Only an observed new turn
+        // or a refresh after lost events may replace explicit completion with generic activity.
         if !self.stale
-            && matches!(status, ThreadStatus::Active { .. } | ThreadStatus::Idle)
+            && matches!(
+                status,
+                ThreadStatus::Active { .. } | ThreadStatus::Idle | ThreadStatus::NotLoaded
+            )
             && self
                 .status
                 .as_deref()

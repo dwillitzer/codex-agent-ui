@@ -361,6 +361,70 @@ async fn agent_panel_is_root_scoped_and_uses_latest_child_context() {
 }
 
 #[tokio::test]
+async fn agent_panel_unloading_preserves_observed_turn_outcomes_and_filter_membership() {
+    let (mut app, _, _) = make_test_app_with_channels().await;
+    let root = ThreadId::new();
+    let child = ThreadId::new();
+    app.primary_thread_id = Some(root);
+    app.active_thread_id = Some(root);
+    let event = spawn(root, child, Some("review-model"));
+    app.track_agent_panel_notification(&event);
+    app.cache_collab_receiver_threads_for_notification(&event);
+    for (outcome, state, count) in [
+        (TurnStatus::Completed, "done", "Done 1"),
+        (TurnStatus::Failed, "error", "Failed 1"),
+        (TurnStatus::Interrupted, "interrupted", "Done 0"),
+    ] {
+        app.track_agent_panel_notification(&ServerNotification::TurnStarted(
+            codex_app_server_protocol::TurnStartedNotification {
+                thread_id: child.to_string(),
+                turn: test_turn("child-turn", TurnStatus::InProgress, vec![]),
+            },
+        ));
+        assert_eq!(
+            app.agent_navigation.panel_details[&child].status.as_deref(),
+            Some("running")
+        );
+        app.track_agent_panel_notification(&ServerNotification::TurnCompleted(
+            codex_app_server_protocol::TurnCompletedNotification {
+                thread_id: child.to_string(),
+                turn: test_turn("child-turn", outcome, vec![]),
+            },
+        ));
+        app.agent_navigation.mark_stopped(child);
+        app.track_agent_panel_notification(&ServerNotification::ThreadStatusChanged(
+            codex_app_server_protocol::ThreadStatusChangedNotification {
+                thread_id: child.to_string(),
+                status: codex_app_server_protocol::ThreadStatus::NotLoaded,
+            },
+        ));
+        app.sync_subagent_panel();
+        assert_eq!(
+            app.agent_navigation.panel_details[&child].status.as_deref(),
+            Some(state)
+        );
+        let text = render_bottom_popup(&app.chat_widget, 140);
+        assert!(text.contains(count), "{text}");
+    }
+    let unknown = ThreadId::new();
+    let event = spawn(root, unknown, None);
+    app.track_agent_panel_notification(&event);
+    app.cache_collab_receiver_threads_for_notification(&event);
+    app.track_agent_panel_notification(&ServerNotification::ThreadStatusChanged(
+        codex_app_server_protocol::ThreadStatusChangedNotification {
+            thread_id: unknown.to_string(),
+            status: codex_app_server_protocol::ThreadStatus::NotLoaded,
+        },
+    ));
+    assert_eq!(
+        app.agent_navigation.panel_details[&unknown]
+            .status
+            .as_deref(),
+        Some("unloaded")
+    );
+}
+
+#[tokio::test]
 async fn agent_panel_ignores_old_completion_and_preserves_model_on_metadata_upsert() {
     let (mut app, _, _) = make_test_app_with_channels().await;
     let root = ThreadId::from_u128(1);

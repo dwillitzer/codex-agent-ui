@@ -37,6 +37,8 @@ Interrupted, idle, unloaded, closed, unavailable, and unknown/reconnecting state
 All unless a pending approval places the child under Active. They are not guessed to be
 successful or failed. Elapsed time alone never implies stuck or failed. Failure evidence is
 not replaced by a generic parent completion notice; an observed new turn may replace it.
+Unloading a viewed child's subscription preserves an already observed terminal outcome and
+its filter membership. Unloaded children without outcome evidence remain under All.
 
 Tab counts refer to children, not Main, and do not change the backing membership cache.
 Hidden agents continue receiving lifecycle and metadata updates. All aggregate activity counts

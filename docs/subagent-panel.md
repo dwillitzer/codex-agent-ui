@@ -3,6 +3,9 @@
 This fork adds a persistent agent preview above the Codex CLI composer. It uses Codex's existing
 thread navigation and app-server lifecycle events; tmux is not required.
 
+For custom-build model discovery and the `0.170.0-agent-ui.1` build identity, see the
+[catalog fix and live verification](model-catalog-build-identity.md).
+
 ## Using the panel
 
 The panel appears once the current primary session has child agents. It shows an active count and

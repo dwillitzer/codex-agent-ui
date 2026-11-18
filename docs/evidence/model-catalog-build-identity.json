@@ -1,0 +1,206 @@
+{
+  "date": "2026-11-18",
+  "version": "0.170.0-agent-ui.1",
+  "sourceBase": "7537a8f8470e52a2dbb9a0a67a938ca6479f4bc3",
+  "workspacePackages": 174,
+  "sourceHashes": {
+    "codex-rs/Cargo.toml": "21bdd26a49a15b2f7e931a3de89bb1e96f37b976f9372fd2cfa87a44bbc83992",
+    "codex-rs/Cargo.lock": "cfcb7edfb341b060dbbe4ce34902f212bb66de2c1bbfaecb2a148b496e87b0be",
+    "codex-rs/models-manager/src/lib.rs": "5b1515f312025a5c3ba28e6d01db3daee069a11f5f322469390317cf285ea390",
+    "codex-rs/tui/src/chatwidget/model_command.rs": "1d2898bced5aaef8d30bd37c3976c9e85802e53b5c55af377101d8a12ed6cae8"
+  },
+  "executable": {
+    "version": "codex-cli 0.170.0-agent-ui.1",
+    "sha256": "fadc940e075aeffa8ee25198a190101e9d7084a1d937ea4b67804bac8b0c020a"
+  },
+  "catalogProbe": [
+    {
+      "version": "0.0.0",
+      "status": 200,
+      "models": [
+        {
+          "slug": "gpt-reserve",
+          "minimal_client_version": "0.144.0"
+        },
+        {
+          "slug": "gpt-6-astra",
+          "minimal_client_version": "0.153.0"
+        },
+        {
+          "slug": "gpt-5.6-sol",
+          "minimal_client_version": "0.144.0"
+        },
+        {
+          "slug": "gpt-5.6-terra",
+          "minimal_client_version": "0.144.0"
+        },
+        {
+          "slug": "gpt-5.6-luna",
+          "minimal_client_version": "0.144.0"
+        },
+        {
+          "slug": "codex-auto-review",
+          "minimal_client_version": "0.98.0"
+        }
+      ]
+    },
+    {
+      "version": "0.170.0",
+      "status": 200,
+      "models": [
+        {
+          "slug": "gpt-6.2-sol",
+          "minimal_client_version": "0.166.0"
+        },
+        {
+          "slug": "gpt-6.2-astra",
+          "minimal_client_version": "0.166.0"
+        },
+        {
+          "slug": "gpt-6.1-terra",
+          "minimal_client_version": "0.153.0"
+        },
+        {
+          "slug": "gpt-reserve",
+          "minimal_client_version": "0.144.0"
+        },
+        {
+          "slug": "gpt-6.1-sol",
+          "minimal_client_version": "0.153.0"
+        },
+        {
+          "slug": "gpt-6-astra",
+          "minimal_client_version": "0.153.0"
+        },
+        {
+          "slug": "gpt-6-sol",
+          "minimal_client_version": "0.155.0"
+        },
+        {
+          "slug": "gpt-6-luna",
+          "minimal_client_version": "0.155.0"
+        },
+        {
+          "slug": "gpt-5.6-sol",
+          "minimal_client_version": "0.144.0"
+        },
+        {
+          "slug": "gpt-5.6-terra",
+          "minimal_client_version": "0.144.0"
+        },
+        {
+          "slug": "gpt-5.6-luna",
+          "minimal_client_version": "0.144.0"
+        },
+        {
+          "slug": "codex-auto-review",
+          "minimal_client_version": "0.98.0"
+        }
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "name": "lock-and-check",
+      "program": "cargo",
+      "args": ["check", "--offline", "-p", "codex-models-manager", "--lib"],
+      "code": 0
+    },
+    {
+      "name": "catalog-tests",
+      "program": "cargo",
+      "args": [
+        "test",
+        "--locked",
+        "-p",
+        "codex-models-manager",
+        "-p",
+        "codex-model-provider",
+        "--lib"
+      ],
+      "code": 0
+    },
+    {
+      "name": "model-selection-tests",
+      "program": "cargo",
+      "args": [
+        "nextest",
+        "run",
+        "--locked",
+        "-p",
+        "codex-tui",
+        "--lib",
+        "--profile",
+        "local",
+        "--test-threads",
+        "4",
+        "--no-fail-fast",
+        "-E",
+        "test(model_command) | test(model_picker)"
+      ],
+      "code": 0
+    },
+    {
+      "name": "cli",
+      "program": "cargo",
+      "args": ["build", "--locked", "-p", "codex-cli", "--bin", "codex"],
+      "code": 0
+    }
+  ],
+  "tests": {
+    "modelProvider": 138,
+    "modelsManager": 60,
+    "tuiSelection": 13,
+    "totalPassed": 211,
+    "fullWorkspaceRun": false
+  },
+  "live": {
+    "workspace": "codex-ui-model-compatibility",
+    "pane": "w3E:p1",
+    "preflight": {
+      "authMode": "chatgpt",
+      "hasApiKey": false,
+      "cacheInitiallyAbsent": true,
+      "checkedAt": "2026-11-18T19:34:53.510Z"
+    },
+    "catalog": {
+      "clientVersion": "0.170.0",
+      "fetchedAt": "2026-11-18T19:53:57.838611Z",
+      "models": [
+        "gpt-6.2-sol",
+        "gpt-6.2-astra",
+        "gpt-6.1-terra",
+        "gpt-reserve",
+        "gpt-6.1-sol",
+        "gpt-6-astra",
+        "gpt-6-sol",
+        "gpt-6-luna",
+        "gpt-5.6-sol",
+        "gpt-5.6-terra",
+        "gpt-5.6-luna",
+        "codex-auto-review"
+      ]
+    },
+    "requestedTurnModels": ["gpt-6.1-sol", "gpt-6.2-sol"],
+    "assistantFinalMarkers": ["MODEL_61_TOOL_OK", "MODEL_62_TOOL_OK"],
+    "toolOutputMarkersVerified": true,
+    "workspaceUnchanged": true,
+    "apiKeyEnvironmentOverridesRemoved": true,
+    "selectionMethod": "/model",
+    "leftOn": "gpt-6.2-sol",
+    "privateSnapshotHashes": {
+      "startup": "3465723525f905295c943eaef504e774986040b21d623520c5dbb7f8e4a6c396",
+      "model-menu": "4ccd28bd1516b96058735a0bb6729b1486f9c4e1ddf521bb1162e03ce9e96a0c",
+      "model61-selected": "6e3a9d8bee26ce6027e273de798ada22b47304628b3c66814236e97895e6bc6a",
+      "model61-response": "9d088b56c52c9c9450aa0e5b6b6c3be492e819f044fc781c36c01fd67e983c44",
+      "model62-selected": "38a4946fcae4e1d1cb3ea08d5d18f3376b89fcdb0b9898058803e989c26f7c53",
+      "model62-response": "d2b8eeb7342fb576ded703f04fb0290aebc0766a03620fe3c46af32728de7889"
+    }
+  },
+  "limits": [
+    "Model execution checks are small tool-call smoke tests, not comprehensive capability validation",
+    "No new full-workspace or cross-platform run",
+    "This is a labeled development fork, not the official 0.170.0 release",
+    "Previously documented signed companion-host prerequisite remains; host is not redistributed"
+  ]
+}

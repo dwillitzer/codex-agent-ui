@@ -1,0 +1,191 @@
+{
+  "date": "2026-11-18",
+  "version": "0.170.0-agent-ui.2",
+  "status": "qualification in progress",
+  "upstreamPin": "333ea3194740c2e19edb215e7c8867170e013e13",
+  "previousBase": "42248f5ef988883cebce298c2279ce22cb536726",
+  "previousStable": "35182c06983b7f05e1e48b43636b2b25a204b16a",
+  "importedCommits": 50,
+  "executable": {
+    "sha256": "6a507eaba15740a64503274dc5b85e3d6dc9953d1abe1aee58cef8f3d034f611",
+    "version": "codex-cli 0.170.0-agent-ui.2"
+  },
+  "runtime": {
+    "recipe": "runtime/companion-manifest.json",
+    "helperSha256": "1711f3ed1f02f4d92782e8686d47d8f7f1692239e0f6a645f1bc07a1580f81a4",
+    "source": "official public npm artifact",
+    "platform": "darwin-x64"
+  },
+  "live": {
+    "workspace": "codex-ui-upstream-review",
+    "pane": "w3F:p1",
+    "isolatedHome": true,
+    "authMode": "chatgpt",
+    "apiKeyEnvironmentOverridesRemoved": true,
+    "actualParentToolMarker": "UPSTREAM_62_TOOL_OK",
+    "children": [
+      {
+        "name": "ui_source",
+        "model": "gpt-6.2-sol",
+        "forkedContext": true,
+        "assignment": "Wait 30 seconds, then report one finding from source.txt",
+        "completed": true
+      },
+      {
+        "name": "ui_backlog",
+        "model": "gpt-6.1-sol",
+        "forkedContext": false,
+        "assignment": "Wait 75 seconds, then report one finding from backlog.md",
+        "completed": true
+      }
+    ],
+    "checks": [
+      "finite slash argument popup and Tab completion without submission",
+      "active child transcript navigation",
+      "completed child transcript navigation",
+      "Done filter counts preserved after return and unload",
+      "short assignment labels and per-child model/context display",
+      "command center Shift-Up/Down group shortcuts shown"
+    ],
+    "limitations": [
+      "Only one project group was present in the live command center; multi-group traversal requires automated coverage",
+      "Per-tool connected-app reviewer changes were not exercised against real services",
+      "Voice runtime and other platforms not evaluated"
+    ],
+    "fixtureHashes": {
+      "source.txt": "e4652901f5907b85f7b197017bceb11838109e3053ca84580b418ff59cd883aa",
+      "backlog.md": "013f2b571979abb4e4497e4956363498a69219ebb358979c0836ef1c9462c008"
+    },
+    "fixturesUnchanged": true,
+    "privateSnapshotHashes": {
+      "active-child-view.txt": "393e32c17c95d8f8e330d093ec7a624a22210738988d6e36e35f291c99d8573f",
+      "argument-completion.txt": "dc73ab1384678c9d2193def67731a302e57be941697f39ec8525043915672f75",
+      "command-center-group-help.txt": "8bd7ef59e2a341098d549a93413ab2c334ee163927352085a112145f8a82681e",
+      "command-center-groups.txt": "364516876c37c1d4992f9025e77d69609c9f88aba42ad0b6045974c489719527",
+      "completed-child-view.txt": "c977e4888c03d087096615fd2dcdd373eb47f80d017a3ec0120ffaf486c6f749",
+      "completed-children.txt": "54c9de43b4366594d0ebdfb811739e928362f8bfc1735083cc76e121351b2a4f",
+      "done-main-selected.txt": "8f6685fbadfda3f6bb600e78962ed59b00c796547acb352f49e0e2077b24a75d",
+      "done-preserved-after-return.txt": "4027cd57c2034f2c2d41e1c7d2a150d12ba00b4047159bd5f9dbad99b8870db4",
+      "finite-arg-completed.txt": "182b238054d57b262fb3a977c706e99068a35e49888128837edffd576d7d8eee",
+      "finite-arg-popup.txt": "b8f8b80bf9f3995c99319be5e83b867ad9a8df711fc591d7a47a53ffe55209b1",
+      "live-review-ready.txt": "f4b4ac9ecfe587ca501774671659e6c0b83de67a2d8d78119fc6844fc71be4b3",
+      "main-selected-before-return.txt": "576ca479f6727b88c37dc06e9d396ebe5107c935360b8a564537b07b2251d7f8",
+      "model62-public-runtime.txt": "d7ba03a2e067504ff30b5a26f76e15d00b94af09e95fd799f705c6d362ec1e74",
+      "other-child-view.txt": "66f2c6487c201fd09f30d18a0c5740228bed696b2c4d0356ae2714afc7eb61b5",
+      "returned-main-active.txt": "f3c74cb44c2d4d56f9bd1abae0b588308e503f4f821f406acc23509398d58d3b",
+      "startup.txt": "0c5a5585147086aae8dc398a45bc03020228808329050691bc74643f579dfd15",
+      "two-child-start.txt": "0b4533c6e43119b6f587e408be5e7553f9993ac4d153fca2464aff33ef636199"
+    }
+  },
+  "fullWorkspaceRun": false,
+  "checks": [
+    {
+      "name": "stable-schema",
+      "program": "python3",
+      "args": ["app-server-protocol/scripts/write_schema_fixtures.py"],
+      "code": 0
+    },
+    {
+      "name": "experimental-schema",
+      "program": "python3",
+      "args": [
+        "app-server-protocol/scripts/write_schema_fixtures.py",
+        "--experimental"
+      ],
+      "code": 0
+    },
+    {
+      "name": "protocol-config-connectors",
+      "program": "cargo",
+      "args": [
+        "test",
+        "--locked",
+        "-p",
+        "codex-app-server-protocol",
+        "-p",
+        "codex-config",
+        "-p",
+        "codex-connectors",
+        "--lib"
+      ],
+      "code": 0
+    },
+    {
+      "name": "cli",
+      "program": "cargo",
+      "args": ["build", "--locked", "-p", "codex-cli", "--bin", "codex"],
+      "code": 0
+    },
+    {
+      "name": "core-regressions",
+      "program": "cargo",
+      "args": [
+        "nextest",
+        "run",
+        "--locked",
+        "-p",
+        "codex-core",
+        "--lib",
+        "--profile",
+        "local",
+        "--test-threads",
+        "4",
+        "--no-fail-fast",
+        "-E",
+        "test(approvals_reviewer) | test(mcp_tool_call_tests) | test(multi_agents_v2) | test(sandbox_launcher)"
+      ],
+      "code": 0
+    }
+  ],
+  "supplementalChecks": [
+    {
+      "name": "sdk-contracts",
+      "program": "python3",
+      "args": [
+        "scripts/run_locked_python_tool.py",
+        "--project",
+        "../sdk/python",
+        "--only-group",
+        "test",
+        "python",
+        "-m",
+        "pytest",
+        "-q",
+        "../sdk/python/tests/test_contract_generation.py",
+        "../sdk/python/tests/test_public_api_signatures.py"
+      ],
+      "code": 0
+    },
+    {
+      "name": "runtime-recipe-tests",
+      "program": "node",
+      "args": ["--test", "scripts/tests/prepare-agent-ui-runtime.test.mjs"],
+      "code": 0,
+      "passed": 4
+    }
+  ],
+  "testSummary": {
+    "protocol": 326,
+    "config": 430,
+    "connectors": 67,
+    "coreSelected": 12,
+    "sdkSelected": 30,
+    "runtimeRecipe": 4,
+    "protocolIgnored": 1,
+    "qualificationComplete": false
+  },
+  "qualificationHistory": [
+    {
+      "gate": "protocol-config-connectors",
+      "initialResult": "323 passed, 3 failed, 1 ignored in protocol; config and connector stages not reached",
+      "cause": "Schema exports were generated with Prettier although the upstream fixtures expect raw output",
+      "resolution": "Regenerated stable and experimental exports without Prettier; 326 protocol, 430 config and 67 connector tests then passed"
+    },
+    {
+      "gate": "tui-regressions",
+      "initialResult": "Compile error E0063 in an upstream transcript fixture; compiler stopped after the known error",
+      "cause": "New fixture omitted fork optional task_summary field",
+      "resolution": "Added task_summary: None without changing the existing assertion; rerun in progress"
+    }
+  ]
+}

@@ -4960,6 +4960,22 @@ fn codex_error_info_serializes_http_status_code_in_camel_case() {
 fn core_error_info_converts_to_camel_case() {
     for (core, expected) in [
         (
+            CoreCodexErrorInfo::ApiKeySpendLimitExceeded,
+            json!("apiKeySpendLimitExceeded"),
+        ),
+        (
+            CoreCodexErrorInfo::ProjectSpendLimitExceeded,
+            json!("projectSpendLimitExceeded"),
+        ),
+        (
+            CoreCodexErrorInfo::OrganizationSpendLimitExceeded,
+            json!("organizationSpendLimitExceeded"),
+        ),
+        (
+            CoreCodexErrorInfo::UsageLimitExceeded,
+            json!("usageLimitExceeded"),
+        ),
+        (
             CoreCodexErrorInfo::PolicyCapacityUnavailable,
             json!("policyCapacityUnavailable"),
         ),
@@ -4968,7 +4984,7 @@ fn core_error_info_converts_to_camel_case() {
             CoreCodexErrorInfo::InferenceHookDenied,
             json!("inferenceHookDenied"),
         ),
-        (CoreCodexErrorInfo::BioPolicy, json!("other")),
+        (CoreCodexErrorInfo::BioPolicy, json!("bioPolicy")),
         (CoreCodexErrorInfo::InvalidPrompt, json!("other")),
         (
             CoreCodexErrorInfo::FlexUnavailable,

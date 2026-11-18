@@ -236,7 +236,7 @@ impl App {
         }
     }
 
-    fn focused_sidebar_chooser(&self, tui: &tui::Tui) -> bool {
+    pub(super) fn focused_sidebar_chooser(&self, tui: &tui::Tui) -> bool {
         self.conversation_focus_available(tui)
             && self.chooser_focus() == Some(super::sidebar::PaneFocus::Sidebar)
             && self.sidebar_chooser_available()
@@ -715,18 +715,17 @@ impl App {
             return;
         }
 
-        if self.chat_widget.is_read_only_view()
-            && self.overlay.is_none()
-            && self.chat_widget.no_modal_or_popup_active()
-        {
-            if key_event.kind == KeyEventKind::Press
-                && key_event.code == KeyCode::Left
-                && key_event.modifiers == KeyModifiers::NONE
-                && self.chat_widget.agents_navigation_key_available()
+        if self.overlay.is_none() && self.chat_widget.no_modal_or_popup_active() {
+            if self
+                .chat_widget
+                .blocked_thread_command_center_key_pressed(key_event)
             {
                 self.open_agents_overview(app_server);
+                return;
             }
-            return;
+            if self.chat_widget.is_read_only_view() {
+                return;
+            }
         }
 
         if self.should_handle_unavailable_thread_key(key_event) {

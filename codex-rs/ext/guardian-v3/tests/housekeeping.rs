@@ -1,30 +1,26 @@
 //! Original evidence is routed by a retained housekeeper conversation into a real board.
 
 #![allow(clippy::expect_used)]
+#![recursion_limit = "256"]
 
-use chrono::DateTime;
 use chrono::Utc;
 use codex_guardian_v3::EvidenceCursor;
 use codex_guardian_v3::HOUSEKEEPER_INSTRUCTIONS;
 use codex_guardian_v3::Housekeeper;
+use codex_guardian_v3::LiveDelivery;
 use codex_guardian_v3::local_board;
 use codex_history::CodexHarnessMetadata;
 use codex_history::ResponseItemEnvelope;
 use codex_history::RolloutItem;
 use codex_message_board::AgentMessageBoard;
 use codex_message_board::ChannelQuery;
-use codex_message_board::MessageBoardHost;
-use codex_message_board::NotificationDelivery;
 use codex_message_board::PageRequest;
-use codex_message_board::PostPreview;
 use codex_message_board::PostQuery;
 use codex_message_board::ReadPostRequest;
 use codex_message_board::SortDirection;
 use codex_message_board::UpsertChannelRequest;
-use codex_protocol::AgentPath;
 use codex_protocol::ThreadId;
 use codex_protocol::config_types::ApprovalsReviewer;
-use codex_protocol::error::Result as CodexResult;
 use codex_protocol::openai_models::TruncationPolicyConfig;
 use codex_protocol::protocol::ThreadHistoryMode;
 use codex_state::SqliteConfig;
@@ -34,23 +30,23 @@ use core_test_support::context_snapshot;
 use core_test_support::context_snapshot::ContextSnapshotOptions;
 use core_test_support::responses::*;
 use core_test_support::test_codex::test_codex;
-use futures::future::BoxFuture;
 use pretty_assertions::assert_eq;
 use serde_json::json;
 use std::num::NonZeroU32;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::atomic::AtomicBool;
-use std::sync::atomic::AtomicI64;
-use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 use std::time::Duration;
 use std::time::Instant;
 use tokio::sync::Notify;
 use tokio_util::sync::CancellationToken;
 
-#[path = "../../../message-board/tests/common/mod.rs"]
+#[path = "common/board_host.rs"]
 mod board_host;
+
+use board_host::PausedClockHost;
+use board_host::board_host;
 
 enum RoutingCase {
     Success,
@@ -59,6 +55,9 @@ enum RoutingCase {
     WriteFailure,
     MissingNewDescription,
     UnroutedDescription,
+    DuplicateDescription,
+    DuplicateDestination,
+    EmptyRoute,
     UpsertDeadline,
     InvalidResponse,
 }
@@ -69,6 +68,9 @@ enum RoutingCase {
 #[test_case::test_case(RoutingCase::WriteFailure; "write_failure")]
 #[test_case::test_case(RoutingCase::MissingNewDescription; "new_destination_needs_description")]
 #[test_case::test_case(RoutingCase::UnroutedDescription; "only_routed_channels_can_be_edited")]
+#[test_case::test_case(RoutingCase::DuplicateDescription; "rejects_duplicate_channel_descriptions_before_writing")]
+#[test_case::test_case(RoutingCase::DuplicateDestination; "writes_once_per_distinct_destination_and_continues_routing")]
+#[test_case::test_case(RoutingCase::EmptyRoute; "rejects_an_original_without_a_destination")]
 #[test_case::test_case(RoutingCase::UpsertDeadline; "stalled_channel_creation")]
 #[test_case::test_case(RoutingCase::InvalidResponse; "redacted_model_error")]
 #[tokio::test]
@@ -167,23 +169,36 @@ async fn routes_captured_originals_and_updates_descriptions(
         )
         .await?;
     let board_handle: Arc<dyn AgentMessageBoard> = board.clone();
-    let mut housekeeper =
-        Housekeeper::new(board_handle, cursor, &test.codex, &test.thread_manager).await?;
+    let mut housekeeper = Housekeeper::new(
+        board_handle,
+        cursor,
+        Arc::new(LiveDelivery::new(owner)),
+        &test.codex,
+        &test.thread_manager,
+    )
+    .await?;
     let cancellation = CancellationToken::new();
     let reply = match case {
         RoutingCase::MissingNewDescription => {
-            r#"{"routes":[["release","_audit"]],"descriptions":{"release":"Release policy"}}"#
+            r#"{"routes":[["release","_audit"]],"descriptions":[{"channel":"release","description":"Release policy"}]}"#
         }
         RoutingCase::UnroutedDescription => {
-            r#"{"routes":[["_audit"]],"descriptions":{"_audit":"","release":"Unrelated edit"}}"#
+            r#"{"routes":[["_audit"]],"descriptions":[{"channel":"_audit","description":""},{"channel":"release","description":"Unrelated edit"}]}"#
         }
+        RoutingCase::DuplicateDescription => {
+            r#"{"routes":[["release"]],"descriptions":[{"channel":"release","description":"first"},{"channel":"release","description":"second"}]}"#
+        }
+        RoutingCase::DuplicateDestination => {
+            r#"{"routes":[["release","_audit","release"]],"descriptions":[{"channel":"release","description":"Release policy"},{"channel":"_audit","description":""}]}"#
+        }
+        RoutingCase::EmptyRoute => r#"{"routes":[[]],"descriptions":[]}"#,
         RoutingCase::InvalidResponse => r#"{"private-evidence-canary":true}"#,
         RoutingCase::Success
         | RoutingCase::RetryExhausted
         | RoutingCase::WindowPressure
         | RoutingCase::WriteFailure
         | RoutingCase::UpsertDeadline => {
-            r#"{"routes":[["release","_audit"]],"descriptions":{"release":"Release policy","_audit":""}}"#
+            r#"{"routes":[["release","_audit"]],"descriptions":[{"channel":"release","description":"Release policy"},{"channel":"_audit","description":""}]}"#
         }
     };
     let mut events = Vec::new();
@@ -277,7 +292,10 @@ async fn routes_captured_originals_and_updates_descriptions(
             &ContextSnapshotOptions::default().rewrite_known_segments(),
         )
     );
-    if !matches!(case, RoutingCase::Success | RoutingCase::WindowPressure) {
+    if !matches!(
+        case,
+        RoutingCase::Success | RoutingCase::WindowPressure | RoutingCase::DuplicateDestination
+    ) {
         let error = routed.expect_err("routing should fail");
         if matches!(case, RoutingCase::InvalidResponse) {
             let diagnostic = format!("{error:#}");
@@ -287,6 +305,8 @@ async fn routes_captured_originals_and_updates_descriptions(
             case,
             RoutingCase::MissingNewDescription
                 | RoutingCase::UnroutedDescription
+                | RoutingCase::DuplicateDescription
+                | RoutingCase::EmptyRoute
                 | RoutingCase::RetryExhausted
         ) {
             // Failed batches stop after the catalog read, before any board writes.
@@ -303,6 +323,13 @@ async fn routes_captured_originals_and_updates_descriptions(
         return Ok(());
     }
     assert_eq!(routed?, 1);
+    if matches!(case, RoutingCase::DuplicateDestination) {
+        // One catalog read, two description upserts, and one append per distinct channel.
+        assert_eq!(
+            host.agent_path_calls.load(Ordering::SeqCst) - calls_before,
+            5
+        );
+    }
     assert_eq!(housekeeper.route_next(&snapshot, &cancellation).await?, 0);
     assert!(housekeeper.cursor().pending(&snapshot)?.is_empty());
     let next = housekeeper
@@ -320,7 +347,7 @@ async fn routes_captured_originals_and_updates_descriptions(
                 .get("x-openai-subagent")
                 .is_some_and(|value| value == "guardian")
     }));
-    assert_eq!(request.body_json()["text"]["format"]["strict"], false);
+    assert_eq!(request.body_json()["text"]["format"]["strict"], true);
     assert!(
         request.body_json()["tools"]
             .as_array()
@@ -409,9 +436,9 @@ async fn routes_captured_originals_and_updates_descriptions(
     for (index, source) in next.records().iter().enumerate() {
         // Omission preserves the description. A redundant echo is harmless too.
         let reply = if index == 0 {
-            r#"{"routes":[["release"]],"descriptions":{}}"#
+            r#"{"routes":[["release"]],"descriptions":[]}"#
         } else {
-            r#"{"routes":[["release"]],"descriptions":{"release":"Release policy"}}"#
+            r#"{"routes":[["release"]],"descriptions":[{"channel":"release","description":"Release policy"}]}"#
         };
         let response = mount_sse_once(
             &server,
@@ -461,9 +488,19 @@ async fn routes_captured_originals_and_updates_descriptions(
             json!({"catalog":catalog,"sources":[source]})
         );
     }
-    let view = board.read_view(owner).await?;
-    let release = view
-        .channels()
+    let catalog = board
+        .list_channels(
+            owner,
+            ChannelQuery {
+                query: Some("release".into()),
+                direction: SortDirection::OldestFirst,
+                page: PageRequest::default(),
+            },
+        )
+        .await?;
+    let release = catalog
+        .channels
+        .results
         .iter()
         .find(|channel| channel.channel_name == "release");
     assert_eq!(
@@ -478,53 +515,6 @@ async fn routes_captured_originals_and_updates_descriptions(
     );
     test.codex.shutdown_and_wait().await?;
     Ok(())
-}
-
-fn board_host(root: ThreadId) -> Arc<board_host::Host> {
-    Arc::new(board_host::Host {
-        clock: AtomicI64::default(),
-        fail_clock: AtomicBool::new(false),
-        agent_path_calls: AtomicUsize::default(),
-        members: [(root, AgentPath::root())].into(),
-        active: AtomicBool::new(true),
-        fail_notifications: AtomicBool::new(false),
-        notifications: Mutex::default(),
-    })
-}
-
-struct PausedClockHost {
-    inner: Arc<board_host::Host>,
-    pause_next: AtomicBool,
-    started: Notify,
-    release: Notify,
-}
-
-impl MessageBoardHost for PausedClockHost {
-    fn agent_path(&self, caller: ThreadId) -> BoxFuture<'_, CodexResult<AgentPath>> {
-        self.inner.agent_path(caller)
-    }
-
-    fn resolve_agent(&self, path: AgentPath) -> BoxFuture<'_, CodexResult<ThreadId>> {
-        self.inner.resolve_agent(path)
-    }
-
-    fn current_time(&self, caller: ThreadId) -> BoxFuture<'_, CodexResult<DateTime<Utc>>> {
-        Box::pin(async move {
-            if self.pause_next.swap(false, Ordering::SeqCst) {
-                self.started.notify_one();
-                self.release.notified().await;
-            }
-            self.inner.current_time(caller).await
-        })
-    }
-
-    fn notify(
-        &self,
-        recipient: ThreadId,
-        post: PostPreview,
-    ) -> BoxFuture<'_, CodexResult<NotificationDelivery>> {
-        self.inner.notify(recipient, post)
-    }
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -575,7 +565,7 @@ async fn root_shutdown_waits_for_the_accepted_evidence_append() -> anyhow::Resul
         vec![vec![
             ev_assistant_message(
                 "route",
-                r#"{"routes":[["release"]],"descriptions":{"release":"Release policy"}}"#,
+                r#"{"routes":[["release"]],"descriptions":[{"channel":"release","description":"Release policy"}]}"#,
             ),
             ev_completed("route"),
         ]],
@@ -760,7 +750,7 @@ async fn command_token_rotation_between_batches_reauthenticates_the_housekeeper(
     let route = vec![
         ev_assistant_message(
             "route",
-            r#"{"routes":[["release"]],"descriptions":{"release":"Release policy"}}"#,
+            r#"{"routes":[["release"]],"descriptions":[{"channel":"release","description":"Release policy"}]}"#,
         ),
         ev_completed("route"),
     ];
@@ -786,8 +776,14 @@ async fn command_token_rotation_between_batches_reauthenticates_the_housekeeper(
         .read_write()
         .open(board_host(root))
         .await?;
-    let mut housekeeper =
-        Housekeeper::new(Arc::new(board), cursor, &test.codex, &test.thread_manager).await?;
+    let mut housekeeper = Housekeeper::new(
+        Arc::new(board),
+        cursor,
+        Arc::new(LiveDelivery::new(root)),
+        &test.codex,
+        &test.thread_manager,
+    )
+    .await?;
     for (index, text) in ["Hold the release.", "The release is approved."]
         .into_iter()
         .enumerate()
@@ -831,6 +827,192 @@ async fn command_token_rotation_between_batches_reauthenticates_the_housekeeper(
             Some("Bearer second-token".to_owned())
         ]
     );
+    test.codex.shutdown_and_wait().await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn subscribed_evidence_reaches_the_retained_reviewer_when_it_becomes_idle()
+-> anyhow::Result<()> {
+    use codex_core::guardian_review::prepare_review_prewarm;
+    use codex_extension_api::ExtensionData;
+    use codex_extension_api::ExtensionRegistryBuilder;
+    use codex_extension_api::ThreadReadyInput;
+    use codex_extension_api::ThreadStopInput;
+    use codex_guardian_reviewer::SessionDisposition;
+    use codex_message_board::SubscriptionChange;
+    use codex_message_board::SubscriptionRequest;
+    use codex_message_board::SubscriptionTarget;
+    use codex_protocol::models::ResponseItem;
+    use codex_protocol::protocol::SessionSource;
+    use codex_protocol::protocol::SubAgentSource;
+    use codex_protocol::turn_input::TurnInputRequest;
+    use codex_protocol::user_input::UserInput;
+    use core_test_support::wait_for_successful_turn;
+
+    core_test_support::skip_if_no_network!(Ok(()));
+    let server = start_mock_server().await;
+    let test = test_codex()
+        .with_history_mode(ThreadHistoryMode::Paginated)
+        .with_model_info_override("gpt-5.6-luna", |_| {})
+        .with_config(|config| config.approvals_reviewer = ApprovalsReviewer::User)
+        .build_with_auto_env(&server)
+        .await?;
+    let actor_thread = &test.codex;
+    let root = actor_thread.startup_metadata().thread_id;
+    let mut registry = ExtensionRegistryBuilder::default();
+    codex_guardian_v3::install(
+        &mut registry,
+        Arc::downgrade(&test.thread_manager),
+        test.config.sqlite_config().clone(),
+        |root| board_host(root),
+    );
+    let registry = registry.build();
+    let session = ExtensionData::new(root.to_string());
+    let thread = actor_thread.thread_extension_data();
+    let lifecycle = &registry.thread_lifecycle_contributors()[0];
+    let child = ExtensionData::new(codex_protocol::ThreadId::new().to_string());
+    lifecycle
+        .on_thread_ready(ThreadReadyInput {
+            config: &test.config,
+            session_source: &SessionSource::SubAgent(SubAgentSource::ThreadSpawn {
+                parent_thread_id: root,
+                depth: 1,
+                agent_path: None,
+                agent_nickname: None,
+                agent_role: None,
+            }),
+            history_initialization: codex_history::HistoryInitialization::New,
+            history_mode: ThreadHistoryMode::Paginated,
+            session_store: &session,
+            thread_store: &child,
+        })
+        .await;
+    assert!(child.get::<codex_guardian_v3::ActorReviewer>().is_none());
+    lifecycle
+        .on_thread_ready(ThreadReadyInput {
+            config: &test.config,
+            session_source: &SessionSource::Exec,
+            history_initialization: codex_history::HistoryInitialization::New,
+            history_mode: ThreadHistoryMode::Paginated,
+            session_store: &session,
+            thread_store: thread,
+        })
+        .await;
+    let actor = thread
+        .get::<codex_guardian_v3::ActorReviewer>()
+        .expect("reviewer installed");
+    let context = prepare_review_prewarm(actor_thread, codex_guardian_v3::BOARD_RETRIEVAL).await?;
+    let cancel = CancellationToken::new();
+    let first = actor.reserve(&context, &cancel).await?;
+    let id = first.thread_id();
+    let reviewer = test
+        .thread_manager
+        .get_thread_with_extension::<codex_guardian_v3::LiveRetrievalBinding>(id, |_| true)
+        .await?;
+    let board = local_board(test.config.sqlite_config().clone(), root.into())
+        .read_write()
+        .open(board_host(root))
+        .await?;
+    board
+        .upsert_channel(
+            root,
+            UpsertChannelRequest {
+                channel_name: "release".into(),
+                description: "Release policy".to_owned().try_into()?,
+            },
+        )
+        .await?;
+    board
+        .set_subscription(
+            root,
+            SubscriptionRequest {
+                target: SubscriptionTarget::Channel("release".into()),
+                target_agent: None,
+                change: SubscriptionChange::Subscribe,
+            },
+        )
+        .await?;
+    let model = mount_sse_sequence(
+        &server,
+        vec![
+            sse(vec![
+                ev_assistant_message("route", r#"{"routes":[["release"]],"descriptions":[]}"#),
+                ev_completed("route"),
+            ]),
+            sse(vec![
+                ev_assistant_message("verdict", "Deny the release."),
+                ev_completed("verdict"),
+            ]),
+        ],
+    )
+    .await;
+    test.thread_store
+        .persist_thread(root, PersistContext::Standard)
+        .await?;
+    test.thread_store
+        .append_items(AppendThreadItemsParams {
+            thread_id: root,
+            items: vec![RolloutItem::ResponseItem(ResponseItemEnvelope {
+                item: user_message_item("Stop the release."),
+                metadata: Some(CodexHarnessMetadata {
+                    user_input_order: Some(1),
+                    ..Default::default()
+                }),
+            })],
+        })
+        .await?;
+    let evidence = thread
+        .get::<codex_guardian_v3::RootEvidence>()
+        .expect("root intake");
+    evidence.request_catch_up().await?.await?;
+    let has_delivery = |items: &dyn codex_extension_api::ConversationHistorySnapshot| {
+        items.items().any(|item| matches!(item, ResponseItem::FunctionCallOutput { name: Some(name), output, .. }
+            if name == "guardian_original_evidence" && output.text_content().is_some_and(|text| text.contains("Stop the release."))))
+    };
+    assert!(!has_delivery(
+        reviewer.conversation_history_snapshot().await.as_ref()
+    ));
+    first.finish(SessionDisposition::Reusable);
+    // Observe the reviewer directly. Reserving it again here would hide a lazy-delivery regression.
+    tokio::time::timeout(Duration::from_secs(10), async {
+        while !has_delivery(reviewer.conversation_history_snapshot().await.as_ref()) {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await?;
+    assert_eq!(model.requests().len(), 1, "only the housekeeper sampled");
+    let second = actor.reserve(&context, &cancel).await?;
+    assert_eq!(id, second.thread_id());
+    reviewer
+        .start_turn_if_idle(TurnInputRequest::user_input(vec![UserInput::Text {
+            text: "Assess the release.".into(),
+            text_elements: Vec::new(),
+        }]))
+        .await?;
+    wait_for_successful_turn(&reviewer).await;
+    let [_, request] = &model.requests()[..] else {
+        anyhow::bail!("expected one routing request and one reviewer request");
+    };
+    assert!(request.body_contains_text("Stop the release."));
+    insta::assert_snapshot!(
+        "guardian_reviewer_routed_original",
+        context_snapshot::format_request_history_snapshot(
+            "The retained reviewer receives the subscribed original before assessing the action.",
+            std::slice::from_ref(request),
+            &ContextSnapshotOptions::default().rewrite_known_segments(),
+        )
+    );
+    drop(second);
+    let third = actor.reserve(&context, &cancel).await?;
+    assert_ne!(id, third.thread_id());
+    third.finish(SessionDisposition::Discard);
+    lifecycle
+        .on_thread_stop(ThreadStopInput {
+            thread_store: thread,
+            session_store: &session,
+        })
+        .await;
     test.codex.shutdown_and_wait().await?;
     Ok(())
 }

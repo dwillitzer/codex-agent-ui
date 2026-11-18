@@ -64,6 +64,11 @@ impl App {
                 AppEvent::OpenDaemonMenu
                     | AppEvent::OpenWarnings
                     | AppEvent::StatusLineSetup { .. }
+                    | AppEvent::OpenStatuslinePicker(_)
+                    | AppEvent::CloseStatuslinePicker(_)
+                    | AppEvent::ChooseStatuslineProvider { .. }
+                    | AppEvent::CreateCustomStatusline { .. }
+                    | AppEvent::StatuslinePicker { .. }
                     | AppEvent::StatusLineSetupCancelled
                     | AppEvent::TerminalTitleSetup { .. }
                     | AppEvent::TerminalTitleSetupPreview { .. }
@@ -96,6 +101,7 @@ impl App {
                     | AppEvent::SideChatArchived { .. }
                     | AppEvent::SavedChatPrepared { .. } | AppEvent::SavedChatReleased { .. }
                     | AppEvent::StartQueuedSavedChat
+                    | AppEvent::OpenSidebarAgent { .. }
                     | AppEvent::OpenSidebarDocument { .. }
                     | AppEvent::SidebarDocumentResolved { .. }
                     | AppEvent::SidebarDocumentLoaded { .. }
@@ -173,6 +179,7 @@ impl App {
                 event,
                 AppEvent::OpenAgentPicker
                     | AppEvent::SelectAgentThread(_)
+                    | AppEvent::OpenSidebarAgent { .. }
                     | AppEvent::StartSide { .. }
                     | AppEvent::ForkCurrentSession { .. }
                     | AppEvent::StartManagedWorktree {
@@ -224,6 +231,7 @@ impl App {
         };
         match event {
             AppEvent::OpenDaemonMenu => self.open_daemon_menu(),
+            AppEvent::RemoteControl(_) | AppEvent::RemoteControlForBackend { .. } | AppEvent::RemoteControlFinished { .. } => {}
             AppEvent::ConfirmDaemonRestart => self.confirm_daemon_restart(),
             AppEvent::RunDaemonRestart => {
                 if self.chat_widget.remote_connection.as_ref().is_some_and(|connection| connection.is_managed_daemon)
@@ -476,6 +484,44 @@ impl App {
                     }
                 }
             }
+            AppEvent::OpenStatuslinePicker(key) => {
+                if self.chat_widget.active_view_is(crate::bottom_pane::StatusLineSetupView::VIEW_ID) {
+                    self.open_statusline_picker(app_server);
+                    self.chat_widget.suppress_current_view_key_until_release(
+                        key,
+                        Instant::now(),
+                        crate::activation_key_guard::ActivationKeySuppression::ViewTransition,
+                    );
+                }
+            }
+            AppEvent::CloseStatuslinePicker(scan) => {
+                if self.statusline_picker.as_ref().is_some_and(|picker| picker.id == scan) {
+                    self.statusline_picker = None;
+                }
+            }
+            AppEvent::ChooseStatuslineProvider { scan, id, key } => self.choose_statusline_provider(scan, id, key, app_server).await,
+            AppEvent::CreateCustomStatusline { backend, thread_id, key } => {
+                if app_server.thread_params_mode() != crate::ThreadParamsMode::Cloud
+                    && self.config.features.enabled(Feature::TuiExtensionsStatusLine)
+                    && self.chat_widget.active_view_is(crate::bottom_pane::StatusLineSetupView::VIEW_ID)
+                    && self.chat_widget.model_catalog().backend == backend
+                    && backend.is_none_or(|id| id == app_server.backend_id())
+                    && self.current_displayed_thread_id() == thread_id
+                {
+                    crate::boxed_future!(self.start_statusline_authoring(tui, app_server)).await;
+                    if self.current_displayed_thread_id() != thread_id {
+                        self.chat_widget.suppress_current_view_key_until_release(
+                            key,
+                            Instant::now(),
+                            crate::activation_key_guard::ActivationKeySuppression::PressOnlyFallback,
+                        );
+                    }
+                }
+            }
+            AppEvent::StatuslinePicker { scan, updates } => self.finish_statusline_discovery(scan, updates, app_server),
+            AppEvent::StatuslineRead(event) => {
+                self.chat_widget.handle_statusline_read(event, app_server, &self.statusline_metrics, &self.config);
+            }
             AppEvent::TaskToolsAvailable { thread_id } => {
                 app_server.remember_task_tool_thread(thread_id);
             }
@@ -655,7 +701,10 @@ impl App {
                     Err(err) => return Err(err),
                 }
             }
-            AppEvent::ResumeBackendSession(_) | AppEvent::CycleNewConversationBackend => {
+            AppEvent::ResumeBackendSession(_)
+            | AppEvent::CycleNewConversationBackend
+            | AppEvent::ChooseCloudEnvironment
+            | AppEvent::StartCloudConversation { .. } => {
                 unreachable!("backend selection is handled by the session manager")
             }
             AppEvent::ArchiveCurrentThread => {
@@ -720,7 +769,7 @@ impl App {
                     }
                     self.chat_widget.fork_in_progress = true;
                     // This handler awaits the fork outside the draw loop. Paint before waiting.
-                    let screen_size = tui.terminal.last_known_screen_size;
+                    let screen_size = tui.prepare_draw_size()?;
                     self.handle_draw_pre_render(tui, screen_size)?;
                     self.chat_widget.pre_draw_tick();
                     self.render_chat_widget_frame(tui, screen_size)?;
@@ -1029,7 +1078,10 @@ impl App {
                 self.begin_thread_switch_history_replay_buffer();
             }
             AppEvent::ParkSideCompanion { pair, thread_id, stream, display } => {
-                if self.side_threads.contains_key(&pair) {
+                if self.side_threads.contains_key(&pair)
+                    || self.sidebars.get(&self.primary_thread_id)
+                        .is_some_and(|pane| pane.agents.detail == Some(pair))
+                {
                     self.transcript_view.sync_history_tail(&self.transcript_cells);
                     let mut answer = None;
                     if let Some(stream) = stream {
@@ -1433,7 +1485,7 @@ impl App {
                         | AppCommand::RealtimeConversationSpeech { .. }
                 );
                 if is_user_turn {
-                    let screen_size = tui.terminal.last_known_screen_size;
+                    let screen_size = tui.prepare_draw_size()?;
                     self.handle_draw_pre_render(tui, screen_size)?;
                     if self.transcript_reflow.has_pending_reflow() {
                         self.transcript_reflow.schedule_immediate();
@@ -1651,10 +1703,10 @@ impl App {
                         elicitation_target: None,
                     });
             }
-            AppEvent::AccountEmailLoaded { request_id, email, workspace } => {
+            AppEvent::AccountEmailLoaded { request_id, email, workspace, plan_type } => {
                 if self.account_email_request_id == Some(request_id) {
                     self.account_email_request_id = None;
-                    self.chat_widget.on_account_email_loaded(email, workspace);
+                    self.chat_widget.on_account_email_loaded(email, workspace, plan_type);
                 }
             }
             AppEvent::SecuritySetupLoaded { request_id, identity, notice } => {
@@ -2068,6 +2120,7 @@ impl App {
                 self.skill_load_warnings.startup_complete = true;
             }
             AppEvent::StartFileSearch(query) => {
+                app_server.task_search.cancel();
                 self.file_search.on_user_query(query.clone());
                 if let Some(thread_id) = self.active_thread_id
                     && app_server.task_tools_available(thread_id)
@@ -2083,12 +2136,12 @@ impl App {
                                 .map(std::path::Path::to_path_buf)
                         })
                         .unwrap_or_else(|| self.config.cwd.to_path_buf());
-                    crate::task_mentions::spawn_search(
-                        app_server.request_handle(),
+                    let handle = app_server.request_handle();
+                    app_server.task_search.spawn(
+                        handle,
                         query,
                         thread_id,
                         cwd,
-                        app_server.task_search_generation(),
                         self.app_event_tx.clone(),
                     );
                 }
@@ -2108,7 +2161,12 @@ impl App {
                 }
             }
             AppEvent::RefreshRateLimits { origin } => {
-                self.refresh_rate_limits(app_server, origin);
+                // A queued recovery can outlive the chat's ChatGPT account.
+                if origin != RateLimitRefreshOrigin::Recovery
+                    || self.chat_widget.has_chatgpt_account()
+                {
+                    self.refresh_rate_limits(app_server, origin);
+                }
             }
             AppEvent::ApplyBackendBannerFallback { thread_id } => {
                 if self.active_thread_id == Some(thread_id)
@@ -2209,7 +2267,12 @@ impl App {
                         self.chat_widget.apply_usage_notice_read(request_id);
                         self.chat_widget.update_backend_banner(&response);
                         self.apply_backend_banner_fallback(app_server).await;
-                        app_server_rate_limit_snapshots(response)
+                        let snapshots = app_server_rate_limit_snapshots(response);
+                        // The account can outlive the popup or chat that requested this read.
+                        for snapshot in &snapshots {
+                            self.chat_widget.observe_quota_plan(snapshot);
+                        }
+                        snapshots
                     } else {
                         Vec::new()
                     };
@@ -3359,6 +3422,9 @@ impl App {
             AppEvent::AgentsOverviewThreadsLoaded { request_id, result } => {
                 self.apply_agents_overview_thread_refresh(app_server, request_id, result);
             }
+            AppEvent::OpenThreadLink { thread_id } => {
+                return Box::pin(thread_links::open_thread_link(self, tui, app_server, thread_id)).await;
+            }
             AppEvent::SelectAgentsOverviewThread { thread_id }
                 if self.agents_overview.pending_archives.contains_key(&thread_id) => {}
             AppEvent::SelectAgentsOverviewThread { thread_id } => {
@@ -3558,17 +3624,26 @@ impl App {
                     }
                 }
             }
+            AppEvent::DiscoverSidebarAgents(root) => {
+                if self.primary_thread_id == Some(root) && !self.reconnect.offline {
+                    self.refresh_agent_picker_threads(app_server, root);
+                }
+            }
             AppEvent::AgentPickerThreadsLoaded {
                 primary_thread_id,
                 request_id,
                 result,
             } => {
-                self.apply_agent_picker_thread_refresh(
+                if let Some(link) = self.apply_agent_picker_thread_refresh(
                     app_server,
                     primary_thread_id,
                     request_id,
                     result,
-                );
+                )
+                    && self.sidebar_agent_link_root(tui, link.source) == Some(primary_thread_id)
+                {
+                    self.open_sidebar_agent(tui, app_server, link.agent).await?;
+                }
             }
             AppEvent::SelectAgentThread(thread_id) => {
                 self.select_agent_thread(tui, app_server, thread_id)
@@ -3636,6 +3711,18 @@ impl App {
                     Box::pin(self.open_saved_chat(tui, app_server, target)).await?;
                 }
             }
+            AppEvent::OpenSidebarAgent { backend, source, agent } => {
+                if backend == app_server.backend_id()
+                    && let Some(root) = self.sidebar_agent_link_root(tui, source)
+                {
+                    if self.is_confirmed_sidebar_agent(root, agent) {
+                        self.open_sidebar_agent(tui, app_server, agent).await?;
+                    } else if self.agent_navigation.picker_refresh.as_ref().is_some_and(|refresh| refresh.root == root) {
+                        // Resume can paint a link before its owning thread list returns.
+                        self.sidebar_mut().agents.pending_link = Some(sidebar_subagents::PendingLink { backend, source, agent });
+                    }
+                }
+            }
             AppEvent::OpenSidebarDocument { backend_id, source, link } => {
                 if app_server.backend_id() == backend_id
                     && self.current_displayed_thread_id() == Some(source)
@@ -3659,7 +3746,7 @@ impl App {
                         && self.document_preview_available(tui, app_server);
                     match path {
                         Ok(path) => Box::pin(self.open_resolved_document(tui, app_server, source, original_path, path, location, focus)).await?,
-                        Err(error) if focus => self.chat_widget.add_error_message(format!("Could not open file: {error}")),
+                        Err(error) if focus => self.chat_widget.add_error_message(format!("Could not open {original_path}: {error}")),
                         Err(_) => {}
                     }
                 }
@@ -4500,8 +4587,11 @@ impl App {
             self.chat_widget
                 .set_footer_hint_override(Some(vec![("Archiving…".into(), String::new())]));
             // Cleanup waits outside the event loop. Paint before sending its first request.
-            let screen_size = tui.terminal.last_known_screen_size;
-            if let Err(error) = self.render_chat_widget_frame(tui, screen_size) {
+            if let Err(error) = (|| -> Result<_> {
+                let screen_size = tui.prepare_draw_size()?;
+                self.handle_draw_pre_render(tui, screen_size)?;
+                self.render_chat_widget_frame(tui, screen_size)
+            })() {
                 tracing::warn!(%error, "failed to render archive progress");
             }
         }

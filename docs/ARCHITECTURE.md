@@ -1,10 +1,12 @@
 # Agent UI fork architecture
 
-Version: **0.170.0-agent-ui.1** | Updated: 2026-11-18
+Version: **0.170.0-agent-ui.2** | Updated: 2026-11-18
 
 This document scopes the fork's additions and build identity. The upstream workspace remains
 the authority for unrelated Codex components. This is a development fork, not the official
 0.170.0 release; its original upstream source base is `42248f5ef988883cebce298c2279ce22cb536726`.
+The `.2` candidate imports 50 commits through `333ea31947`, including per-tool reviewers and
+sidebar-agent discovery. See the [maintenance and qualification plan](upstream-maintenance.md).
 
 ## Components and dependencies
 
@@ -15,11 +17,14 @@ flowchart LR
     Server --> Manager[codex-models-manager]
     Manager --> Provider[codex-model-provider]
     Provider --> Backend[Authenticated Codex backend]
+    Server --> Host[codex-code-mode-host]
 ```
 
 The TUI owns parent-scoped presentation and selection. App-server notifications supply
 lineage, turn state, model settings, and usage. Models manager owns catalog caching and
 version identity; model-provider fetches the authenticated catalog.
+The helper executes code-mode tool orchestration. Candidate `.2` pins an official npm helper
+artifact through the runtime manifest and preparation script; its compatibility is under evaluation.
 
 ## Decisions
 
@@ -39,5 +44,6 @@ See [panel architecture and contracts](subagent-panel.md), [data flow](DATAFLOW.
 
 | Version            | Change                                                             |
 | ------------------ | ------------------------------------------------------------------ |
+| 0.170.0-agent-ui.2 | Upstream integration candidate through `333ea31947`                |
 | 0.170.0-agent-ui.1 | Mark the fork build and use a meaningful catalog client version    |
 | 0.0.0              | Earlier development builds and their historical evaluation records |

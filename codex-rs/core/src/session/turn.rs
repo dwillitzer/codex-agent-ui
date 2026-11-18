@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::ops::ControlFlow;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use std::time::Duration;
@@ -43,6 +44,8 @@ use crate::responses_retry::ResponsesStreamRequest;
 use crate::responses_retry::ResponsesStreamRetryState;
 use crate::responses_retry::handle_response_stream_error;
 use crate::responses_retry::is_terminal_sampling_outcome;
+use crate::rollout_budget::ResponseWork;
+use crate::rollout_budget::TurnWork;
 use crate::session::PreviousTurnSettings;
 use crate::session::TurnInput;
 use crate::session::daemon_recovery::RecordedTurnInput;
@@ -102,7 +105,6 @@ use codex_protocol::error::Result as CodexResult;
 use codex_protocol::items::PlanItem;
 use codex_protocol::items::TurnItem;
 use codex_protocol::items::build_hook_prompt_message;
-use codex_protocol::models::AudioReference;
 use codex_protocol::models::BaseInstructions;
 use codex_protocol::models::ContentItem;
 use codex_protocol::models::MessagePhase;
@@ -136,6 +138,7 @@ use codex_tools::DiscoverableTool;
 use codex_tools::ToolName;
 use codex_tools::ToolSpec;
 use codex_tools::filter_request_plugin_install_discoverable_tools_for_client;
+use codex_user_input::ResolvedUserInput;
 use codex_utils_path_uri::PathUri;
 use codex_utils_stream_parser::AssistantTextChunk;
 use codex_utils_stream_parser::AssistantTextStreamParser;
@@ -303,7 +306,7 @@ pub(crate) async fn run_turn(
         return Ok(None);
     }
 
-    let user_input = turn_user_input(&input);
+    let user_input = input_for_extensions(&input);
     let allow_plugin_mentions =
         !crate::guardian::is_basic_session_source(&turn_context.session_source);
     let McpStartupRequirements {
@@ -522,6 +525,13 @@ pub(crate) async fn run_turn(
     track_turn_resolved_config_analytics(&sess, &first_step_context, &input).await;
 
     let mut last_agent_message: Option<String> = None;
+    let mut work = TurnWork::new(
+        &sess.services.budget_policy,
+        sess.thread_id(),
+        &turn_context.sub_id,
+        &turn_context.session_source,
+    );
+    let mut completion_hooks = TurnCompletionHooks::default();
     let mut stop_hook_active = false;
     // A steer can reopen sampling within the same turn. Keep its aggregate until the turn ends.
     let turn_diff_tracker = turn_context
@@ -594,7 +604,7 @@ pub(crate) async fn run_turn(
                 .await?
             }
             Some(_) | None => {
-                let pending_user_input = turn_user_input(&pending_input);
+                let pending_user_input = input_for_extensions(&pending_input);
                 if allow_plugin_mentions {
                     required_plugins.extend(crate::plugins::collect_explicit_plugin_ids(
                         &pending_user_input,
@@ -665,12 +675,13 @@ pub(crate) async fn run_turn(
         .await;
         let sampling_request_result =
             sampling_request_result.and_then(|(output, notifications)| {
-                sess.check_rollout_budget()?;
-                Ok((output, notifications))
+                let has_final_answer =
+                    !output.mailbox_preempted && output.last_agent_message.final_answer.is_some();
+                let next = work.accept_response(has_final_answer)?;
+                Ok((output, notifications, next))
             });
         match sampling_request_result {
-            Ok(result) => {
-                let (sampling_request_output, notify_messages) = result;
+            Ok((sampling_request_output, notify_messages, next)) => {
                 guardian_budget_compacted = false;
 
                 let SamplingRequestResult {
@@ -682,13 +693,13 @@ pub(crate) async fn run_turn(
                     final_answer,
                     trailing_commentary,
                 } = sampling_request_last_agent_message;
-                let sampling_request_last_agent_message = trailing_commentary.or(final_answer);
-                let hooks = TurnCompletionHooks {
+                let sampling_request_last_agent_message =
+                    work.assistant_message(final_answer, trailing_commentary);
+                completion_hooks = TurnCompletionHooks {
                     last_assistant_message: sampling_request_last_agent_message,
                     notify_messages: Some(notify_messages),
                     stop_ran: false,
                 };
-                let mut completion_hooks = hooks;
                 if model_needs_follow_up {
                     sess.input_queue
                         .accept_mailbox_delivery_for_current_turn(
@@ -700,6 +711,14 @@ pub(crate) async fn run_turn(
                 can_drain_pending_input = true;
                 // Process async hooks only after sampling and its tools have finished.
                 drain_async_hook_results(&sess, &turn_context, /*before_user_prompt*/ false).await;
+                if next.should_retry(model_needs_follow_up) {
+                    continue;
+                }
+                if next.is_finished() {
+                    return completion_hooks
+                        .finish(&sess, &step_context, stop_hook_active, work.take_answer())
+                        .await;
+                }
                 let (has_pending_input, token_status) = async {
                     // Tool output can add audio without a queued user input. Resolve its
                     // duration before checking the continuation's compaction threshold.
@@ -835,6 +854,15 @@ pub(crate) async fn run_turn(
                     let stop_outcome = completion_hooks
                         .run_stop(&sess, &step_context, stop_hook_active)
                         .await;
+                    let after_stop = work.after_stop_hook()?;
+                    if after_stop.is_finished() {
+                        return completion_hooks
+                            .finish(&sess, &step_context, stop_hook_active, work.take_answer())
+                            .await;
+                    }
+                    if after_stop.should_return(&stop_outcome) {
+                        return Ok(work.take_answer());
+                    }
                     if matches!(
                         turn_context.session_source,
                         SessionSource::Internal(InternalSessionSource::MemoryConsolidation)
@@ -919,7 +947,7 @@ pub(crate) async fn run_turn(
                                 return Err(err);
                             }
                             let error = err.to_codex_protocol_error();
-                            if matches!(error, CodexErrorInfo::UsageLimitExceeded) {
+                            if error.is_usage_limit() {
                                 // Preserve the completed answer while stopping automatic work.
                                 sess.emit_turn_error_lifecycle(
                                     turn_context.as_ref(),
@@ -930,6 +958,9 @@ pub(crate) async fn run_turn(
                             }
                             warn!(error = %err, "Post-turn compaction failed; preserving the completed turn");
                         }
+                    }
+                    if work.should_finish_after_compaction()? {
+                        return Ok(work.take_answer());
                     }
                     break;
                 }
@@ -994,6 +1025,17 @@ pub(crate) async fn run_turn(
                 break;
             }
             Err(e) => {
+                let e = match work.on_error(e)? {
+                    ControlFlow::Break(next) => {
+                        if next.is_finished() {
+                            return completion_hooks
+                                .finish(&sess, &step_context, stop_hook_active, work.take_answer())
+                                .await;
+                        }
+                        continue;
+                    }
+                    ControlFlow::Continue(e) => e,
+                };
                 info!("Turn error: {e:#}");
                 if matches!(
                     e.details(),
@@ -1069,6 +1111,21 @@ impl TurnCompletionHooks {
         };
         run_legacy_after_agent_hook(sess, turn, messages, self.last_assistant_message.clone()).await
     }
+    async fn finish(
+        mut self,
+        sess: &Arc<Session>,
+        step_context: &Arc<StepContext>,
+        stop_hook_active: bool,
+        answer: Option<String>,
+    ) -> CodexResult<Option<String>> {
+        if !self.stop_ran {
+            self.run_stop(sess, step_context, stop_hook_active).await;
+        }
+        if self.run_after_agent(sess, &step_context.turn).await {
+            return Ok(None);
+        }
+        Ok(answer)
+    }
 }
 
 #[instrument(level = "trace", skip_all)]
@@ -1104,17 +1161,21 @@ pub(crate) async fn run_hooks_and_record_inputs(
 ) -> CodexResult<bool> {
     let mut blocked_input = false;
     let mut accepted_user_input = false;
+    let mut input_error = None;
     for input_item in recordable_inputs(sess, model_info, input) {
         let input_item = input_item?;
         let hook_outcome = inspect_pending_input(sess, turn_context, &input_item).await;
+        let realtime_handoff_id = match input_item.as_ref() {
+            TurnInput::UserInput { metadata, .. } => metadata.realtime_handoff_id,
+            _ => None,
+        };
         if hook_outcome.should_stop {
+            if let Some(id) = realtime_handoff_id {
+                sess.reject_realtime_handoff(id).await;
+            }
             blocked_input = true;
             record_additional_contexts(sess, turn_context, hook_outcome.additional_contexts).await;
         } else {
-            if matches!(input_item.as_ref(), TurnInput::UserInput { content, .. } if !content.is_empty())
-            {
-                accepted_user_input = true;
-            }
             // Tool outputs retain their durability barrier, including in mixed input batches.
             let input_persist_context = if persist_context == PersistContext::SteeredUserInput
                 && matches!(input_item.as_ref(), TurnInput::FunctionCallOutput(_))
@@ -1123,7 +1184,8 @@ pub(crate) async fn run_hooks_and_record_inputs(
             } else {
                 persist_context
             };
-            record_pending_input(
+            let is_user_input = matches!(input_item.as_ref(), TurnInput::UserInput { content, .. } if !content.is_empty());
+            if let Err(error) = record_pending_input(
                 sess,
                 turn_context,
                 model_info,
@@ -1131,13 +1193,23 @@ pub(crate) async fn run_hooks_and_record_inputs(
                 hook_outcome.additional_contexts,
                 input_persist_context,
             )
-            .await;
+            .await
+            {
+                // The batch has left the queue. Persist its unrelated siblings before failing.
+                input_error.get_or_insert(error);
+            } else if is_user_input {
+                accepted_user_input = true;
+            }
         }
     }
     // The batch has left the input queue. Persist every accepted item before the
     // optional lookup can suspend this task long enough for an interrupt to abort it.
     if !input.is_empty() {
         super::file_audio::resolve_pending(sess).await;
+    }
+    if let Some(error) = input_error {
+        sess.conversation.stop_for_history_recovery().await;
+        return Err(CodexErr::Io(error));
     }
     Ok(blocked_input && !accepted_user_input)
 }
@@ -1169,7 +1241,7 @@ pub(crate) fn recordable_inputs<'a>(
                 && turn_input_has_uploaded_audio_file(&item)
                 && let TurnInput::UserInput { content, .. } = item.to_mut()
             {
-                content.retain(|part| !is_uploaded_audio_file(part));
+                content.retain(|part| !part.is_uploaded_audio_file());
                 if content.is_empty() {
                     return None;
                 }
@@ -1180,7 +1252,7 @@ pub(crate) fn recordable_inputs<'a>(
 }
 
 fn turn_input_has_uploaded_audio_file(input: &TurnInput) -> bool {
-    matches!(input, TurnInput::UserInput { content, .. } if content.iter().any(is_uploaded_audio_file))
+    matches!(input, TurnInput::UserInput { content, .. } if content.iter().any(ResolvedUserInput::is_uploaded_audio_file))
 }
 
 fn unsupported_uploaded_audio_error() -> CodexErr {
@@ -1189,16 +1261,8 @@ fn unsupported_uploaded_audio_error() -> CodexErr {
     )
 }
 
-fn is_uploaded_audio_file(input: &UserInput) -> bool {
-    matches!(
-        input,
-        UserInput::Audio {
-            audio: AudioReference::File { .. }
-        }
-    )
-}
-
-pub(crate) fn turn_user_input(input: &[TurnInput]) -> Vec<UserInput> {
+/// Extensions and telemetry consume the protocol view, including the original mention and path labels.
+fn input_for_extensions(input: &[TurnInput]) -> Vec<UserInput> {
     input
         .iter()
         .filter_map(|item| match item {
@@ -1208,7 +1272,7 @@ pub(crate) fn turn_user_input(input: &[TurnInput]) -> Vec<UserInput> {
             | TurnInput::InterAgentCommunication(_) => None,
         })
         .flatten()
-        .cloned()
+        .map(ResolvedUserInput::to_user_input)
         .collect()
 }
 
@@ -1568,9 +1632,7 @@ async fn track_turn_resolved_config_analytics(
                     | TurnInput::InterAgentCommunication(_) => None,
                 })
                 .flatten()
-                .filter(|item| {
-                    matches!(item, UserInput::Image { .. } | UserInput::LocalImage { .. })
-                })
+                .filter(|item| item.is_image())
                 .count(),
             submission_type: None,
             ephemeral: thread_config.ephemeral,
@@ -2166,7 +2228,7 @@ pub(super) enum PreparedToolRecommendations {
 }
 
 impl PreparedToolRecommendations {
-    #[instrument(level = "trace", skip_all)]
+    #[instrument(name = "plugins.recommendations.load", level = "info", skip_all)]
     pub(super) async fn load(sess: &Session, turn_context: &TurnContext) -> Self {
         let auth = sess.services.auth_manager.auth().await;
         let endpoint_candidates = sess
@@ -3084,6 +3146,7 @@ async fn try_run_sampling_request(
         == codex_config::config_toml::ResponseProcessMode::Streaming;
     let mut wait_for_bill_only = false;
     let mut in_flight = FuturesOrdered::new();
+    let mut response_work = ResponseWork::default();
     let mut needs_follow_up = false;
     let mut last_agent_message = AssistantMessages::default();
     let mut active_item: Option<TurnItem> = None;
@@ -3177,20 +3240,17 @@ async fn try_run_sampling_request(
                     preempt = CancellationToken::new();
                     continue;
                 }
-                if stream.settlement_started.load(Ordering::Acquire) {
-                    wait_for_bill_only = streaming && stream.interrupt.is_none();
-                } else {
-                    let Some(interrupt) = stream.interrupt.take() else {
-                        // TODO: Reconcile any response item already being presented to the client.
-                        break Ok(SamplingRequestResult {
-                            needs_follow_up: true,
-                            mailbox_preempted: false,
-                            last_agent_message,
-                        });
-                    };
-                    if step_context.settings.model_info.use_responses_lite {
-                        let _ = interrupt.send(codex_api::ResponseInterrupt::Drain);
-                    }
+                if stream.interrupt.is_none() {
+                    // Stop upstream polling, but keep receiving until any completion already
+                    // observed by the mapper has finished accounting.
+                    wait_for_bill_only =
+                        streaming || !stream.settlement_started.load(Ordering::Acquire);
+                    stream.consumer_dropped.cancel();
+                } else if !stream.settlement_started.load(Ordering::Acquire)
+                    && let Some(interrupt) = stream.interrupt.take()
+                    && step_context.settings.model_info.use_responses_lite
+                {
+                    let _ = interrupt.send(codex_api::ResponseInterrupt::Drain);
                 }
                 // A steer cannot start another request before the accounting owner returns its decision.
                 preempt = CancellationToken::new();
@@ -3202,6 +3262,13 @@ async fn try_run_sampling_request(
 
         let event = SamplingStream::accept_for_turn(event, &cancellation_token);
         let Some(crate::client_common::SamplingEvent { event, hook_output }) = event else {
+            if stream.consumer_dropped.is_cancelled() {
+                break Ok(SamplingRequestResult {
+                    needs_follow_up: true,
+                    mailbox_preempted: *draining_for_mailbox,
+                    last_agent_message,
+                });
+            }
             break Err(CodexErr::Stream(
                 "stream closed before response.completed".into(),
             ));
@@ -3237,14 +3304,7 @@ async fn try_run_sampling_request(
 
         // A steer can cut off unread items on an HTTP stream while the owner posts its bill.
         // Consume the terminal accounting decision before opening the follow-up request.
-        if wait_for_bill_only {
-            if matches!(event, ResponseEvent::Completed { .. }) {
-                break Ok(SamplingRequestResult {
-                    needs_follow_up: true,
-                    mailbox_preempted: *draining_for_mailbox,
-                    last_agent_message,
-                });
-            }
+        if wait_for_bill_only && !matches!(event, ResponseEvent::Completed { .. }) {
             continue;
         }
 
@@ -3435,21 +3495,19 @@ async fn try_run_sampling_request(
                         conversation.id = %sess.thread_id,
                         turn.id = %turn_context.sub_id,
                     );
-                    if stream.settlement_started.load(Ordering::Acquire) {
-                        wait_for_bill_only = streaming
-                            && !(step_context.settings.model_info.use_responses_lite
-                                && stream.interrupt.is_some());
-                    } else if step_context.settings.model_info.use_responses_lite
-                        && let Some(interrupt) = stream.interrupt.take()
+                    if step_context.settings.model_info.use_responses_lite
+                        && stream.interrupt.is_some()
                     {
-                        // Completion can already be buffered when the interrupt receiver closes.
-                        let _ = interrupt.send(codex_api::ResponseInterrupt::Drain);
+                        if !stream.settlement_started.load(Ordering::Acquire)
+                            && let Some(interrupt) = stream.interrupt.take()
+                        {
+                            // Completion can already be buffered when the interrupt receiver closes.
+                            let _ = interrupt.send(codex_api::ResponseInterrupt::Drain);
+                        }
                     } else {
-                        break Ok(SamplingRequestResult {
-                            needs_follow_up: true,
-                            mailbox_preempted: true,
-                            last_agent_message,
-                        });
+                        wait_for_bill_only =
+                            streaming || !stream.settlement_started.load(Ordering::Acquire);
+                        stream.consumer_dropped.cancel();
                     }
                     // Keep the response ID and terminal decision. Later tools receive a denial.
                     *draining_for_mailbox = true;
@@ -3646,6 +3704,8 @@ async fn try_run_sampling_request(
                     usage_metadata.as_ref(),
                 )
                 .await;
+                let mut hook_output = hook_output;
+                response_work.accept_charge(&mut hook_output);
                 let budget_result = sess
                     .record_token_usage_info(
                         &turn_context,
@@ -3667,6 +3727,13 @@ async fn try_run_sampling_request(
                 should_emit_token_count = true;
                 if let Err(err) = budget_result {
                     break Err(err);
+                }
+                if wait_for_bill_only {
+                    break Ok(SamplingRequestResult {
+                        needs_follow_up: true,
+                        mailbox_preempted: *draining_for_mailbox,
+                        last_agent_message,
+                    });
                 }
                 if resampling.retry_pending {
                     response_completed = false;
@@ -3884,6 +3951,7 @@ async fn try_run_sampling_request(
         return Err(CodexErr::TurnAborted);
     }
 
+    response_work.finish(&sess.services.budget_policy)?;
     outcome
 }
 

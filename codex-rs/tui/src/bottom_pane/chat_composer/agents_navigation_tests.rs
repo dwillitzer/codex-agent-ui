@@ -14,6 +14,8 @@ fn parent_owned_thread_allows_local_commands() {
         ("/btw", SlashCommand::Btw),
         ("/diff ", SlashCommand::Diff),
         ("/daemon", SlashCommand::Daemon),
+        ("/rc", SlashCommand::Rc),
+        ("/remote", SlashCommand::Rc),
         ("/warnings", SlashCommand::Warnings),
     ] {
         let (mut composer, _rx) = new_test_composer();
@@ -32,6 +34,7 @@ fn parent_owned_thread_allows_local_commands() {
         (SlashCommand::MultiAgents, "expand"),
         (SlashCommand::Title, "model"),
         (SlashCommand::Statusline, "model --no-colors"),
+        (SlashCommand::Rc, "invalid"),
     ] {
         let (mut composer, _rx) = new_test_composer();
         composer.set_parent_owned_thread();
@@ -134,7 +137,7 @@ fn agents_navigation_hint_snapshots() {
 }
 
 #[test]
-fn left_respects_editor_and_vim_history_remaps() {
+fn left_respects_editor_and_edit_history_remaps() {
     use codex_config::types::KeybindingSpec;
     use codex_config::types::KeybindingsSpec;
     use codex_config::types::TuiKeymap;

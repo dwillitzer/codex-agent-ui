@@ -237,6 +237,14 @@
           ],
           "description": "Approval mode for this tool."
         },
+        "approvals_reviewer": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/ApprovalsReviewer"
+            }
+          ],
+          "description": "Reviewer for this tool's approval prompts, overriding link-level and app-level settings."
+        },
         "enabled": {
           "description": "Whether this tool is enabled. `Some(true)` explicitly allows this tool.",
           "type": "boolean"
@@ -1082,6 +1090,9 @@
             "guardian_native_multi_agent_history": {
               "type": "boolean"
             },
+            "guardian_nested_approval_context": {
+              "type": "boolean"
+            },
             "guardian_node_repl_transcript_images": {
               "type": "boolean"
             },
@@ -1283,6 +1294,9 @@
             "realtime_conversation": {
               "type": "boolean"
             },
+            "realtime_frames_local": {
+              "type": "boolean"
+            },
             "reasoning_effort_override": {
               "type": "boolean"
             },
@@ -1320,6 +1334,9 @@
               "type": "boolean"
             },
             "responses_websockets_v2": {
+              "type": "boolean"
+            },
+            "restored_history_prewarm": {
               "type": "boolean"
             },
             "retain_client_developer_messages": {
@@ -1696,6 +1713,11 @@
       "required": [
         "command"
       ],
+      "type": "object"
+    },
+    "CredentialPermissionsToml": {
+      "additionalProperties": false,
+      "description": "In `requirements.toml`, `[permissions.credentials]` sets shared credential policy and `[permissions.<profile>.credentials]` sets policy for a named profile. Omit the shared table until it contains a supported policy setting. In `config.toml`, credentials use the named-profile form alongside filesystem and network.",
       "type": "object"
     },
     "CredentialProviderConfig": {
@@ -2897,7 +2919,7 @@
           "type": "string"
         },
         {
-          "description": "Exchange an enterprise IdP refresh token for resource-specific authorization. Alternate credentials and ordinary OAuth fallback are not permitted.",
+          "description": "Exchange an enterprise IdP refresh token or, if none was issued, a current ID token for resource-specific authorization. Alternate credentials and ordinary OAuth fallback are not permitted.",
           "enum": [
             "ema_auth"
           ],
@@ -4194,6 +4216,9 @@
     "PermissionProfileToml": {
       "additionalProperties": false,
       "properties": {
+        "credentials": {
+          "$ref": "#/definitions/CredentialPermissionsToml"
+        },
         "description": {
           "type": "string"
         },
@@ -5490,6 +5515,8 @@
               "hide": null,
               "new_task": null,
               "new_worktree": null,
+              "next_group": null,
+              "previous_group": null,
               "rename": null,
               "resume": null,
               "search": null,
@@ -5524,8 +5551,10 @@
               "history_search_next": null,
               "history_search_previous": null,
               "queue": null,
+              "redo": null,
               "submit": null,
-              "toggle_shortcuts": null
+              "toggle_shortcuts": null,
+              "undo": null
             },
             "editor": {
               "delete_backward": null,
@@ -5548,6 +5577,7 @@
             },
             "global": {
               "change_host": null,
+              "choose_cloud_environment": null,
               "clear_terminal": null,
               "close_sidebar_tab": null,
               "copy": null,
@@ -5926,6 +5956,22 @@
           ],
           "description": "Open a new session in a worktree from the project default branch."
         },
+        "next_group": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/KeybindingsSpec"
+            }
+          ],
+          "description": "Select the first task in the next group."
+        },
+        "previous_group": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/KeybindingsSpec"
+            }
+          ],
+          "description": "Select the first task in the previous group."
+        },
         "rename": {
           "allOf": [
             {
@@ -6171,6 +6217,14 @@
           ],
           "description": "Queue the current composer draft while a task is running."
         },
+        "redo": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/KeybindingsSpec"
+            }
+          ],
+          "description": "Redo an undone composer edit."
+        },
         "submit": {
           "allOf": [
             {
@@ -6186,6 +6240,14 @@
             }
           ],
           "description": "Toggle the composer shortcut overlay."
+        },
+        "undo": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/KeybindingsSpec"
+            }
+          ],
+          "description": "Undo the last edit to the composer draft."
         }
       },
       "type": "object"
@@ -6381,6 +6443,14 @@
             }
           ],
           "description": "Change where a new conversation runs."
+        },
+        "choose_cloud_environment": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/KeybindingsSpec"
+            }
+          ],
+          "description": "Choose a saved environment for a new Cloud conversation."
         },
         "clear_terminal": {
           "allOf": [
@@ -6658,6 +6728,8 @@
             "hide": null,
             "new_task": null,
             "new_worktree": null,
+            "next_group": null,
+            "previous_group": null,
             "rename": null,
             "resume": null,
             "search": null,
@@ -6713,8 +6785,10 @@
             "history_search_next": null,
             "history_search_previous": null,
             "queue": null,
+            "redo": null,
             "submit": null,
-            "toggle_shortcuts": null
+            "toggle_shortcuts": null,
+            "undo": null
           }
         },
         "editor": {
@@ -6751,6 +6825,7 @@
           ],
           "default": {
             "change_host": null,
+            "choose_cloud_environment": null,
             "clear_terminal": null,
             "close_sidebar_tab": null,
             "copy": null,
@@ -8338,6 +8413,9 @@
         "guardian_native_multi_agent_history": {
           "type": "boolean"
         },
+        "guardian_nested_approval_context": {
+          "type": "boolean"
+        },
         "guardian_node_repl_transcript_images": {
           "type": "boolean"
         },
@@ -8539,6 +8617,9 @@
         "realtime_conversation": {
           "type": "boolean"
         },
+        "realtime_frames_local": {
+          "type": "boolean"
+        },
         "reasoning_effort_override": {
           "type": "boolean"
         },
@@ -8576,6 +8657,9 @@
           "type": "boolean"
         },
         "responses_websockets_v2": {
+          "type": "boolean"
+        },
+        "restored_history_prewarm": {
           "type": "boolean"
         },
         "retain_client_developer_messages": {

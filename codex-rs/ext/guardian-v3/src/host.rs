@@ -16,16 +16,18 @@ use codex_extension_api::TurnAbortInput;
 use codex_extension_api::TurnLifecycleContributor;
 use codex_extension_api::TurnStopInput;
 use codex_guardian_reviewer::ReviewerTasks;
-use codex_history::HistoryInitialization;
+use codex_message_board::AgentMessageBoard;
 use codex_message_board::MessageBoardHost;
+use codex_protocol::AgentPath;
 use codex_protocol::ThreadId;
 use codex_protocol::items::TurnItem;
 use codex_state::SqliteConfig;
-use codex_thread_store::ThreadStoreError;
 use tokio::sync::mpsc;
 
+use crate::ActorReviewer;
 use crate::EvidenceCursor;
 use crate::Housekeeper;
+use crate::cutoff::RootEvidence;
 use crate::local_board;
 
 pub fn install(
@@ -49,7 +51,8 @@ struct Host {
     board_host: Box<dyn Fn(ThreadId) -> Arc<dyn MessageBoardHost> + Send + Sync>,
 }
 
-struct RootWorker {
+pub(super) struct RootWorker {
+    pub(super) reader: Arc<dyn AgentMessageBoard>,
     wake: mpsc::Sender<()>,
     lifetime: Arc<ReviewerTasks>,
 }
@@ -59,7 +62,7 @@ impl Host {
         &self,
         root: ThreadId,
         input: &ThreadReadyInput<'_, Config>,
-    ) -> anyhow::Result<RootWorker> {
+    ) -> anyhow::Result<()> {
         let history = self
             .manager
             .upgrade()
@@ -73,53 +76,58 @@ impl Host {
         )
         .await?;
         let storage = local_board(self.sqlite.clone(), root.into());
-        let board = storage.read_write().open((self.board_host)(root)).await?;
+        let board_host = (self.board_host)(root);
+        let board = storage.read_write().open(board_host.clone()).await?;
+        let reader: Arc<dyn AgentMessageBoard> =
+            Arc::new(storage.read_only().open(board_host).await?);
         let lifetime = Arc::new(ReviewerTasks::default());
-        let (wake, mut requests) = mpsc::channel(1);
+        let (wake, wakes) = mpsc::channel(1);
+        let (queue, mut captures) = RootEvidence::new(lifetime.clone(), history, cursor.clone());
+        lifetime
+            .tasks
+            .spawn(queue.clone().capture_on_activity(wakes));
+        let worker = RootWorker {
+            wake,
+            lifetime: Arc::clone(&lifetime),
+            reader,
+        };
+        let delivery = Arc::clone(&queue.delivery);
         let scope = lifetime.clone();
         let manager = self.manager.clone();
-        let mut awaiting_first_write = matches!(
-            input.history_initialization,
-            HistoryInitialization::New | HistoryInitialization::Cleared
-        );
         lifetime.tasks.spawn(async move {
             let cancellation = &scope.cancellation;
             let work = async {
+                let Some(mut capture) = cancellation
+                    .run_until_cancelled(captures.recv())
+                    .await
+                    .flatten()
+                else {
+                    return Ok(());
+                };
                 let startup = async {
-                    requests.recv().await.context("Guardian worker closed")?;
                     let manager = manager.upgrade().context("Guardian host stopped")?;
                     let parent = manager.get_thread(root).await?;
-                    Housekeeper::new(Arc::new(board), cursor, &parent, &manager).await
+                    Housekeeper::new(Arc::new(board), cursor, delivery, &parent, &manager).await
                 };
                 let Some(housekeeper) = cancellation.run_until_cancelled(startup).await else {
                     return Ok(());
                 };
                 let mut housekeeper = housekeeper?;
                 loop {
-                    let Some(flushed) = cancellation.run_until_cancelled(history.flush_thread(root)).await else {
+                    while housekeeper
+                        .route_next(&capture.snapshot, cancellation)
+                        .await?
+                        != 0
+                    {}
+                    capture.finish();
+                    let Some(next) = cancellation
+                        .run_until_cancelled(captures.recv())
+                        .await
+                        .flatten()
+                    else {
                         break;
                     };
-                    flushed?;
-                    let capture = housekeeper.cursor().capture(history.as_ref());
-                    let Some(captured) = cancellation.run_until_cancelled(capture).await else {
-                        break;
-                    };
-                    match captured {
-                        Ok(snapshot) => {
-                            awaiting_first_write = false;
-                            while housekeeper
-                                .route_next(&snapshot, cancellation)
-                                .await? != 0
-                            {}
-                        }
-                        // A wake can precede the first durable record. Keep the cursor until the next wake.
-                        Err(error) if awaiting_first_write && matches!(error.downcast_ref::<ThreadStoreError>(),
-                            Some(ThreadStoreError::ThreadNotFound { thread_id }) if *thread_id == root) => {}
-                        Err(error) => return Err(error),
-                    }
-                    if cancellation.run_until_cancelled(requests.recv()).await.flatten().is_none() {
-                        break;
-                    }
+                    capture = next;
                 }
                 anyhow::Ok(())
             };
@@ -128,7 +136,9 @@ impl Host {
                 tracing::warn!(%root, "Guardian housekeeping stopped");
             }
         });
-        Ok(RootWorker { wake, lifetime })
+        input.thread_store.insert_arc(queue);
+        input.thread_store.insert(worker);
+        Ok(())
     }
 }
 
@@ -138,26 +148,43 @@ impl ThreadLifecycleContributor<Config> for Host {
         input: ThreadReadyInput<'a, Config>,
     ) -> ExtensionFuture<'a, ()> {
         Box::pin(async move {
-            if input.session_source.is_internal()
-                || input.config.ephemeral
-                || input.thread_store.level_id() != input.session_store.level_id()
-            {
+            if input.session_source.is_internal() || input.config.ephemeral {
                 return;
             }
-            let Ok(root) = ThreadId::from_string(input.thread_store.level_id()) else {
+            let (Ok(actor), Ok(root)) = (
+                ThreadId::from_string(input.thread_store.level_id()),
+                ThreadId::from_string(input.session_store.level_id()),
+            ) else {
                 return;
             };
-            match self.activate(root, &input).await {
-                Ok(worker) => {
-                    input.thread_store.insert(worker);
-                }
-                Err(error) => tracing::warn!(%root, error = %error, "Guardian intake unavailable"),
+            // Legacy spawned agents have no board identity and keep their native reviewer.
+            let Some(path) = input
+                .session_source
+                .get_agent_path()
+                .or_else(|| (actor == root).then(AgentPath::root))
+            else {
+                return;
+            };
+            let actor_reviewer =
+                Arc::new(ActorReviewer::new(self.manager.clone(), root, actor, path));
+            input.thread_store.insert_arc(Arc::clone(&actor_reviewer));
+            let attached: Arc<dyn codex_core::guardian_review::AttachedReviewer> = actor_reviewer;
+            input.thread_store.insert(attached);
+            if actor != root {
+                return;
+            }
+            if let Err(error) = self.activate(root, &input).await {
+                tracing::warn!(%root, error = %error, "Guardian intake unavailable");
             }
         })
     }
     fn on_thread_stop<'a>(&'a self, input: ThreadStopInput<'a>) -> ExtensionFuture<'a, ()> {
         Box::pin(async move {
+            if let Some(actor) = input.thread_store.remove::<ActorReviewer>() {
+                actor.shutdown().await;
+            }
             if let Some(worker) = input.thread_store.remove::<RootWorker>() {
+                input.thread_store.remove::<RootEvidence>();
                 worker.lifetime.cancellation.cancel();
                 worker.lifetime.tasks.close();
                 worker.lifetime.tasks.wait().await;

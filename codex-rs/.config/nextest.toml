@@ -28,6 +28,12 @@ path = "junit.xml"
 [profile.local]
 inherits = "default"
 
+[[profile.local.overrides]]
+# Nine real-server navigation scenarios took about 75s in isolation on Intel macOS.
+# Preserve their assertions while bounding this integration-heavy local case.
+filter = 'package(codex-tui) & test(=app::tests::agents_navigation_tests::thread_links_navigate_and_missing_threads_preserve_the_draft)'
+slow-timeout = { period = "1m", terminate-after = 3 }
+
 [test-groups.app_server_protocol_codegen]
 max-threads = 1
 

@@ -567,12 +567,24 @@ async fn opens_agent_transcript_beside_parent_and_returns_to_chooser() -> color_
         Box::pin(app.handle_event(&mut tui, &mut server, event)).await?;
     }
     let screen = side_frame(&mut app, &mut tui, Size::new(140, 20))?;
+    let passive = app
+        .conversation_frame
+        .side_pane()
+        .expect("passive child transcript")
+        .passive;
     let (row, column) = screen
         .lines()
         .enumerate()
         .find_map(|(row, line)| {
-            let offset = line.find("/root/reviewer/helper")?;
-            Some((row as u16, line[..offset].chars().count() as u16))
+            // The inline panel repeats the agent path. Click the passive transcript link,
+            // rather than the first matching label elsewhere in the rendered frame.
+            line.match_indices("/root/reviewer/helper")
+                .find_map(|(offset, _)| {
+                    let column = line[..offset].chars().count() as u16;
+                    passive
+                        .contains((column, row as u16).into())
+                        .then_some((row as u16, column))
+                })
         })
         .expect("visible link in passive child");
     let click = MouseEvent {

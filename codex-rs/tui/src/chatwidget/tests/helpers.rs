@@ -101,7 +101,12 @@ pub(crate) fn normalize_agent_center_snapshot(text: impl AsRef<str>) -> String {
             let normalized = content
                 .split('│')
                 .map(|pane| {
-                    let mut normalized = pane.to_owned();
+                    // Keep visual fixtures stable across meaningful fork versions. The padding
+                    // below preserves the pane's cell width; runtime build identity is unchanged.
+                    let mut normalized = pane.replace(
+                        &format!("OpenAI Codex (v{})", crate::version::CODEX_CLI_VERSION),
+                        "OpenAI Codex (v0.0.0)",
+                    );
                     for unix_path in ["/tmp/second-project", "/tmp/project", "/project"] {
                         // test_path_buf uses this drive for all absolute Windows fixtures.
                         let windows_path = format!("C:{}", unix_path.replace('/', "\\"));
@@ -112,7 +117,7 @@ pub(crate) fn normalize_agent_center_snapshot(text: impl AsRef<str>) -> String {
                     if normalized.trim() == r"C:\" || normalized.trim() == "C:/" {
                         normalized = normalized.replace(normalized.trim(), "/");
                     }
-                    // Only ASCII path bytes change, so this is also the removed cell width.
+                    // Only ASCII path/version bytes change, so this is the removed cell width.
                     let padding = pane.len().saturating_sub(normalized.len());
                     normalized.push_str(&" ".repeat(padding));
                     normalized

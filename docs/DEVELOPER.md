@@ -53,6 +53,11 @@ The [model-catalog evaluation](model-catalog-build-identity.md) records the earl
 211 selected tests and subscription-backed GPT-6.1 Sol/GPT-6.2 Sol tool calls.
 The `.2` candidate requires its own [qualification gates](upstream-maintenance.md).
 
+The `scripts/subagent-panel-test-runner.mjs` Cargo runner isolates test HOME and defaults
+to a 32 MiB test-thread stack for large debug navigation futures. It does not alter the
+shipped runtime stack. Use the `local` nextest profile: its exact nine-scenario thread-link
+case has a three-minute limit after an isolated Intel run passed in about 75 seconds.
+
 ## References and version history
 
 [Architecture](ARCHITECTURE.md), [data flow](DATAFLOW.md), [API scope](API-SURFACE.md), and

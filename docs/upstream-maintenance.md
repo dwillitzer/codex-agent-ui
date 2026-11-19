@@ -19,9 +19,9 @@ captured interval, so automatically adopting every main-branch change would be c
 The first integration required manual resolution in three TUI files, the lockfile, and two
 generated protocol archives. Cleanly merged areas also need semantic review and regression tests.
 
-The merged-tree comparison against the captured upstream pin shows 51 differing Rust
-files, about 3,006 added and 11 removed lines, including tests and five upstream fixture
-constructor adaptations. It is mostly additive, but it
+The merged-tree comparison against the captured upstream pin shows 52 differing Rust
+files, about 3,027 added and 15 removed lines, including tests, five upstream fixture
+constructor adaptations, version normalization and a pane-scoped test click target. It is mostly additive, but it
 is larger than a small display plugin. Keep measuring this surface instead of assuming it stays thin.
 
 The most expensive custom surfaces are assignment metadata across core/protocol/SDK and TUI
@@ -44,6 +44,9 @@ its behavior satisfies the tested contract. Avoid creating a second orchestratio
 
 A weekly reviewed update window is a reasonable starting cadence, with targeted fixes sooner
 when needed. This document does not configure recurring automation or unattended deployment.
+Prefer published upstream release tags for routine adoption when they contain the required
+features. Use a reviewed main-branch pin for a specific feature, as this candidate does, and
+qualify its companion-runtime compatibility rather than assuming a matching version label.
 
 Budget for build time as well as conflict resolution. In this Intel evaluation the selected
 core test gate spent about 30 minutes compiling before its 12 tests passed in about 10 seconds.

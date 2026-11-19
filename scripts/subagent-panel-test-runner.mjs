@@ -17,7 +17,8 @@ const child = spawn(binary, args, {
     ...process.env,
     HOME: fixtureHome,
     ...(process.platform === "win32" ? { USERPROFILE: fixtureHome } : {}),
-    RUST_MIN_STACK: process.env.RUST_MIN_STACK ?? "8388608",
+    // Real-server navigation fixtures contain large debug-only async state machines.
+    RUST_MIN_STACK: process.env.RUST_MIN_STACK ?? "33554432",
   },
 });
 const timer = setTimeout(

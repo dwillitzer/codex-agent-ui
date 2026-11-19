@@ -75,7 +75,9 @@
       "returned-main-active.txt": "f3c74cb44c2d4d56f9bd1abae0b588308e503f4f821f406acc23509398d58d3b",
       "startup.txt": "0c5a5585147086aae8dc398a45bc03020228808329050691bc74643f579dfd15",
       "two-child-start.txt": "0b4533c6e43119b6f587e408be5e7553f9993ac4d153fca2464aff33ef636199"
-    }
+    },
+    "executableSha256": "6a507eaba15740a64503274dc5b85e3d6dc9953d1abe1aee58cef8f3d034f611",
+    "buildProvenance": "Built from the pending merged tree before the source checkpoint commit; subsequent source changes before the checkpoint were test fixtures and documentation only."
   },
   "fullWorkspaceRun": false,
   "checks": [
@@ -135,6 +137,44 @@
         "test(approvals_reviewer) | test(mcp_tool_call_tests) | test(multi_agents_v2) | test(sandbox_launcher)"
       ],
       "code": 0
+    },
+    {
+      "name": "tui-regressions",
+      "program": "cargo",
+      "args": [
+        "nextest",
+        "run",
+        "--locked",
+        "-p",
+        "codex-tui",
+        "--lib",
+        "--profile",
+        "local",
+        "--test-threads",
+        "4",
+        "--no-fail-fast",
+        "-E",
+        "test(opens_agent_transcript_beside_parent_and_returns_to_chooser)"
+      ],
+      "code": 0
+    },
+    {
+      "name": "clippy",
+      "program": "cargo",
+      "args": [
+        "clippy",
+        "--locked",
+        "-p",
+        "codex-tui",
+        "-p",
+        "codex-connectors",
+        "--all-targets",
+        "--no-deps",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "code": 0
     }
   ],
   "supplementalChecks": [
@@ -172,7 +212,14 @@
     "sdkSelected": 30,
     "runtimeRecipe": 4,
     "protocolIgnored": 1,
-    "qualificationComplete": false
+    "qualificationComplete": false,
+    "tuiSelected": {
+      "priorPassing": 285,
+      "threadLinkRecheckPassing": 1,
+      "sidebarRecheckPassing": 1,
+      "combinedUniquePassing": 287,
+      "full287RerunAfterTestOnlyAdjustments": false
+    }
   },
   "qualificationHistory": [
     {
@@ -186,6 +233,44 @@
       "initialResult": "Compile error E0063 in an upstream transcript fixture; compiler stopped after the known error",
       "cause": "New fixture omitted fork optional task_summary field",
       "resolution": "Added task_summary: None without changing the existing assertion; rerun in progress"
+    },
+    {
+      "gate": "tui-regressions",
+      "initialResult": "287 run: 285 passed, 1 stack failure, 1 timed out",
+      "resolution": "Use 32 MiB debug-test stacks, normalize only the build version in pane snapshots, and give the exact nine-scenario local navigation test a bounded three-minute timeout. The navigation test passed in isolation in 74.61 seconds. Recheck only the two affected cases; later upstream TUI gates exercise the shared normalizer."
+    },
+    {
+      "gate": "tui-regressions-targeted-recheck",
+      "result": "Thread-link test passed in 46.317 seconds with the scoped timeout; sidebar test passed its snapshot but failed the passive-link pointer assertion",
+      "cause": "The new inline panel repeats the agent path, so the upstream test clicked its first text match outside the passive transcript",
+      "resolution": "Scope text-match coordinates to the passive transcript rectangle; preserve the existing link, navigation and close-tab assertions. Rerun only the remaining affected sidebar case."
     }
-  ]
+  ],
+  "sourceCheckpoint": "14ab873c56e94760affe7cd84e3134a955fb5de3",
+  "priorTuiRegressionPasses": 285,
+  "testEnvironment": {
+    "cwd": "codex-rs",
+    "RUST_MIN_STACK": "33554432",
+    "cargoTargetRunner": "node <repo>/scripts/subagent-panel-test-runner.mjs",
+    "nextestProfile": "local",
+    "nextestThreads": 4,
+    "note": "Initial 287-case TUI attempt used an 8 MiB stack and the default 60-second limit. Targeted recheck uses 32 MiB and the exact local thread-link timeout override; earlier passing assertions were retained."
+  },
+  "resolvedTuiNavigationRecheck": {
+    "passed": 1,
+    "seconds": 46.317
+  },
+  "resolvedTuiSidebarRecheck": {
+    "passed": 1,
+    "seconds": 9.216,
+    "assertionsPreserved": true
+  },
+  "postCheckpointChanges": "Test fixtures, snapshot normalization, test runner stack budget, a scoped local test timeout, and documentation only; production Rust code remains at the source checkpoint.",
+  "customRustDelta": {
+    "baseline": "333ea3194740c2e19edb215e7c8867170e013e13",
+    "files": 52,
+    "added": 3027,
+    "removed": 15,
+    "includesTests": true
+  }
 }

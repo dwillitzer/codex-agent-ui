@@ -103,10 +103,15 @@ pub(crate) fn normalize_agent_center_snapshot(text: impl AsRef<str>) -> String {
                 .map(|pane| {
                     // Keep visual fixtures stable across meaningful fork versions. The padding
                     // below preserves the pane's cell width; runtime build identity is unchanged.
-                    let mut normalized = pane.replace(
-                        &format!("OpenAI Codex (v{})", crate::version::CODEX_CLI_VERSION),
-                        "OpenAI Codex (v0.0.0)",
-                    );
+                    let mut normalized = pane
+                        .replace(
+                            &format!("OpenAI Codex (v{})", crate::version::CODEX_CLI_VERSION),
+                            "OpenAI Codex (v0.0.0)",
+                        )
+                        .replace(
+                            &format!("Codex CLI v{}", crate::version::CODEX_CLI_VERSION),
+                            "Codex CLI v0.0.0",
+                        );
                     for unix_path in ["/tmp/second-project", "/tmp/project", "/project"] {
                         // test_path_buf uses this drive for all absolute Windows fixtures.
                         let windows_path = format!("C:{}", unix_path.replace('/', "\\"));

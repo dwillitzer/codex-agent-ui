@@ -34,6 +34,17 @@ inherits = "default"
 filter = 'package(codex-tui) & test(=app::tests::agents_navigation_tests::thread_links_navigate_and_missing_threads_preserve_the_draft)'
 slow-timeout = { period = "1m", terminate-after = 3 }
 
+[[profile.local.overrides]]
+# These multi-scenario server-startup cases passed alone in 22-56s on Intel macOS,
+# but concurrent startups exceeded 60s. Keep assertions and timeout unchanged.
+filter = 'package(codex-tui) & (test(command_center_new_checkout_and_worktree_preserve_source_and_default_branch) | test(command_center_new_preserves_explicit_choices_and_managed_defaults) | test(command_center_new_reads_server_defaults_for_actual_destination) | test(command_center_read_only_open_requests_and_failure_preservation))'
+threads-required = "num-test-threads"
+
+[[profile.local.overrides]]
+# This reviewer fixture passed alone but raced cold server startup in parallel.
+filter = 'package(codex-app-server) & test(mcp_server_strict_auto_review::tool_reviewer_user)'
+threads-required = "num-test-threads"
+
 [test-groups.app_server_protocol_codegen]
 max-threads = 1
 

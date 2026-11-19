@@ -1,20 +1,24 @@
 {
   "date": "2026-11-18",
   "version": "0.170.0-agent-ui.2",
-  "status": "qualification in progress",
+  "status": "selected Intel macOS qualification passed; trial candidate",
   "upstreamPin": "333ea3194740c2e19edb215e7c8867170e013e13",
   "previousBase": "42248f5ef988883cebce298c2279ce22cb536726",
   "previousStable": "35182c06983b7f05e1e48b43636b2b25a204b16a",
   "importedCommits": 50,
   "executable": {
+    "version": "codex-cli 0.170.0-agent-ui.2",
     "sha256": "6a507eaba15740a64503274dc5b85e3d6dc9953d1abe1aee58cef8f3d034f611",
-    "version": "codex-cli 0.170.0-agent-ui.2"
+    "normalBuild": true,
+    "matchesInteractiveWalkthrough": true
   },
   "runtime": {
     "recipe": "runtime/companion-manifest.json",
     "helperSha256": "1711f3ed1f02f4d92782e8686d47d8f7f1692239e0f6a645f1bc07a1580f81a4",
     "source": "official public npm artifact",
-    "platform": "darwin-x64"
+    "platform": "darwin-x64",
+    "qualification": "Selected Darwin x64 coding, native subagent, yielded code-mode and sandbox checks passed; see docs/evidence/upstream-integration-20261118.json",
+    "sourceBuiltHostRevalidated": false
   },
   "live": {
     "workspace": "codex-ui-upstream-review",
@@ -175,6 +179,213 @@
         "warnings"
       ],
       "code": 0
+    },
+    {
+      "name": "appserver-feature-integration",
+      "program": "cargo",
+      "args": [
+        "nextest",
+        "run",
+        "--locked",
+        "-p",
+        "codex-app-server",
+        "--test",
+        "all",
+        "--profile",
+        "local",
+        "--test-threads",
+        "4",
+        "--no-fail-fast",
+        "-E",
+        "test(config_read_includes_tools) | test(tool_reviewer_user)"
+      ],
+      "code": 0
+    },
+    {
+      "name": "core-feature-integration",
+      "program": "cargo",
+      "args": [
+        "nextest",
+        "run",
+        "--locked",
+        "-p",
+        "codex-core",
+        "--test",
+        "all",
+        "--profile",
+        "local",
+        "--test-threads",
+        "4",
+        "--no-fail-fast",
+        "-E",
+        "test(apps_prompt_with_auto_review_routes_actual_mcp_approval_to_guardian)"
+      ],
+      "code": 0
+    },
+    {
+      "name": "tui-upstream-features",
+      "program": "cargo",
+      "args": [
+        "nextest",
+        "run",
+        "--locked",
+        "-p",
+        "codex-tui",
+        "--lib",
+        "--profile",
+        "local",
+        "--test-threads",
+        "4",
+        "--no-fail-fast",
+        "-E",
+        "test(reconnect_daemon_command_center_after_socket_replacement_without_a_conversation) | test(command_center_new_checkout_and_worktree_preserve_source_and_default_branch) | test(command_center_new_preserves_explicit_choices_and_managed_defaults) | test(command_center_new_reads_server_defaults_for_actual_destination) | test(command_center_read_only_open_requests_and_failure_preservation)"
+      ],
+      "code": 0
+    },
+    {
+      "name": "api-sandbox-unit",
+      "program": "cargo",
+      "args": [
+        "test",
+        "--locked",
+        "-p",
+        "codex-api",
+        "-p",
+        "codex-sandboxing",
+        "--lib"
+      ],
+      "code": 0
+    },
+    {
+      "name": "sandbox-launcher-integration",
+      "program": "cargo",
+      "args": [
+        "nextest",
+        "run",
+        "--locked",
+        "-p",
+        "codex-cli",
+        "--test",
+        "shared_sandbox_launcher",
+        "--profile",
+        "local",
+        "--test-threads",
+        "4",
+        "--no-fail-fast"
+      ],
+      "code": 0
+    },
+    {
+      "name": "sdk-contracts",
+      "program": "python3",
+      "args": [
+        "scripts/run_locked_python_tool.py",
+        "--project",
+        "../sdk/python",
+        "--only-group",
+        "test",
+        "python",
+        "-m",
+        "pytest",
+        "-q",
+        "../sdk/python/tests/test_contract_generation.py",
+        "../sdk/python/tests/test_public_api_signatures.py"
+      ],
+      "code": 0
+    },
+    {
+      "name": "model-catalogs",
+      "program": "cargo",
+      "args": [
+        "test",
+        "--locked",
+        "-p",
+        "codex-models-manager",
+        "-p",
+        "codex-model-provider",
+        "--lib"
+      ],
+      "code": 0
+    },
+    {
+      "name": "agent-lifecycle-integration",
+      "program": "cargo",
+      "args": [
+        "nextest",
+        "run",
+        "--locked",
+        "-p",
+        "codex-core",
+        "--test",
+        "all",
+        "--profile",
+        "local",
+        "--test-threads",
+        "4",
+        "--no-fail-fast",
+        "-E",
+        "test(yielded_code_mode_spawn_preserves_metadata_and_plaintext)"
+      ],
+      "code": 0
+    },
+    {
+      "name": "agent-attribution-integration",
+      "program": "cargo",
+      "args": [
+        "nextest",
+        "run",
+        "--locked",
+        "-p",
+        "codex-app-server",
+        "--test",
+        "all",
+        "--profile",
+        "local",
+        "--test-threads",
+        "4",
+        "--no-fail-fast",
+        "-E",
+        "test(subagents_inherit_spawn_metadata_without_live_parent_updates) | test(mcp_server_strict_auto_review::tool_reviewer_user)"
+      ],
+      "code": 0
+    },
+    {
+      "name": "agent-metadata-unit",
+      "program": "cargo",
+      "args": [
+        "nextest",
+        "run",
+        "--locked",
+        "-p",
+        "codex-core",
+        "--lib",
+        "--profile",
+        "local",
+        "--test-threads",
+        "4",
+        "--no-fail-fast",
+        "-E",
+        "test(child_metadata_snapshot_excludes_parent_review_and_routing_fields)"
+      ],
+      "code": 0
+    },
+    {
+      "name": "clippy-final",
+      "program": "cargo",
+      "args": [
+        "clippy",
+        "--locked",
+        "-p",
+        "codex-tui",
+        "-p",
+        "codex-connectors",
+        "--all-targets",
+        "--no-deps",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "code": 0
     }
   ],
   "supplementalChecks": [
@@ -212,14 +423,35 @@
     "sdkSelected": 30,
     "runtimeRecipe": 4,
     "protocolIgnored": 1,
-    "qualificationComplete": false,
+    "qualificationComplete": true,
     "tuiSelected": {
       "priorPassing": 285,
       "threadLinkRecheckPassing": 1,
       "sidebarRecheckPassing": 1,
       "combinedUniquePassing": 287,
       "full287RerunAfterTestOnlyAdjustments": false
-    }
+    },
+    "upstreamTui": {
+      "initialPasses": 52,
+      "affectedRechecksPassed": 5,
+      "combinedUniquePassed": 56,
+      "oneRecheckOverlapsInitiallyFlakyPass": true,
+      "full56RerunAfterTestOnlyAdjustments": false
+    },
+    "api": 211,
+    "sandbox": 123,
+    "sandboxIgnoredHelpers": 3,
+    "coreActualApprovalRouting": 3,
+    "modelsManager": 60,
+    "modelProvider": 138,
+    "agentLifecycle": {
+      "priorPassing": 9,
+      "affectedRecheckPassing": 1,
+      "combinedUniquePassing": 10
+    },
+    "attributionVariants": 3,
+    "childMetadataUnit": 1,
+    "sharedSandboxLauncher": 8
   },
   "qualificationHistory": [
     {
@@ -232,7 +464,7 @@
       "gate": "tui-regressions",
       "initialResult": "Compile error E0063 in an upstream transcript fixture; compiler stopped after the known error",
       "cause": "New fixture omitted fork optional task_summary field",
-      "resolution": "Added task_summary: None without changing the existing assertion; rerun in progress"
+      "resolution": "Added task_summary: None without changing the existing assertion; subsequent targeted rechecks passed"
     },
     {
       "gate": "tui-regressions",
@@ -244,6 +476,33 @@
       "result": "Thread-link test passed in 46.317 seconds with the scoped timeout; sidebar test passed its snapshot but failed the passive-link pointer assertion",
       "cause": "The new inline panel repeats the agent path, so the upstream test clicked its first text match outside the passive transcript",
       "resolution": "Scope text-match coordinates to the passive transcript rectangle; preserve the existing link, navigation and close-tab assertions. Rerun only the remaining affected sidebar case."
+    },
+    {
+      "gate": "appserver-feature-integration",
+      "result": "2 passed; first tool_reviewer_user attempt failed during initialization and its mock saw zero model requests; configured retry passed",
+      "followup": "Repeat the exact formerly flaky reviewer case alongside the later attribution gate; retain the initial flaky result in the record.",
+      "suspectedCause": "Startup or fixture timing; exact root cause was not established"
+    },
+    {
+      "gate": "tui-upstream-features",
+      "initialResult": "56 run: 52 passed including one flaky, 1 version-only snapshot failure, 3 timed out",
+      "resolution": "Normalize the CLI-version display in the daemon mismatch snapshot without changing the service version. All four startup-heavy cases passed alone; serialize those exact local tests without changing their timeout or assertions. Recheck these five affected cases; retain the 52 earlier passes."
+    },
+    {
+      "gate": "local-test-scheduling-config",
+      "initialResult": "Nextest rejected a duplicate TOML key before any test ran",
+      "resolution": "Corrected the override placement, verified TOML parsing and inspected the upstream diff: only two local TUI overrides differ; upstream default settings are unchanged."
+    },
+    {
+      "gate": "agent-lifecycle-integration",
+      "initialResult": "9 passed; yielded code-mode spawn fell back to direct tools and failed with channel empty",
+      "diagnostic": "Tool output showed unsupported exec/wait because the prepared companion was not discovered by the fixture",
+      "resolution": "Explicit pinned-host path passed. Public runner now discovers the installed sidecar; the exact test passed without an explicit override in 2.685 seconds. Original metadata/plaintext assertions retained; failure-only diagnostics added."
+    },
+    {
+      "gate": "agent-attribution-reviewer-recheck",
+      "initialResult": "Three attribution variants passed; reviewer fixture again needed retry while servers started concurrently",
+      "resolution": "Isolated reviewer passed first try in 2.751 seconds. A scoped local test-pool reservation produced four passing attribution/reviewer cases without retries in 27.654 seconds, with original timeout and assertions."
     }
   ],
   "sourceCheckpoint": "14ab873c56e94760affe7cd84e3134a955fb5de3",
@@ -254,7 +513,8 @@
     "cargoTargetRunner": "node <repo>/scripts/subagent-panel-test-runner.mjs",
     "nextestProfile": "local",
     "nextestThreads": 4,
-    "note": "Initial 287-case TUI attempt used an 8 MiB stack and the default 60-second limit. Targeted recheck uses 32 MiB and the exact local thread-link timeout override; earlier passing assertions were retained."
+    "note": "Initial 287-case TUI attempt used an 8 MiB stack and the default 60-second limit. Targeted recheck uses 32 MiB and the exact local thread-link timeout override; earlier passing assertions were retained.",
+    "companionDiscovery": "Public test runner exposes the prepared companion beside Cargo debug/deps unless an explicit Cargo/Bazel override is provided"
   },
   "resolvedTuiNavigationRecheck": {
     "passed": 1,
@@ -268,9 +528,243 @@
   "postCheckpointChanges": "Test fixtures, snapshot normalization, test runner stack budget, a scoped local test timeout, and documentation only; production Rust code remains at the source checkpoint.",
   "customRustDelta": {
     "baseline": "333ea3194740c2e19edb215e7c8867170e013e13",
-    "files": 52,
-    "added": 3027,
-    "removed": 15,
+    "files": 54,
+    "added": 3051,
+    "removed": 16,
     "includesTests": true
+  },
+  "upstreamBuildWarnings": [
+    "Three unused imports in app-server/tests/suite/v2/sleep.rs; unrelated upstream test code was left unchanged. Strict TUI/connector linting passed."
+  ],
+  "isolatedStartupCases": [
+    {
+      "name": "app::tests::background_task_defaults_tests::command_center_new_checkout_and_worktree_preserve_source_and_default_branch",
+      "code": 0,
+      "seconds": 31.833
+    },
+    {
+      "name": "app::tests::background_task_defaults_tests::command_center_new_preserves_explicit_choices_and_managed_defaults",
+      "code": 0,
+      "seconds": 21.777
+    },
+    {
+      "name": "app::tests::background_task_defaults_tests::command_center_new_reads_server_defaults_for_actual_destination",
+      "code": 0,
+      "seconds": 55.78
+    },
+    {
+      "name": "app::tests::session_lifecycle_requests::command_center_read_only_open_requests_and_failure_preservation",
+      "code": 0,
+      "seconds": 45.586
+    }
+  ],
+  "priorUpstreamTuiPasses": 52,
+  "resolvedUpstreamTuiRecheck": {
+    "cases": 5,
+    "passed": 5,
+    "flaky": 0,
+    "seconds": 140.015,
+    "serializedStartupSeconds": [26.972, 21.88, 43.28, 42.508],
+    "snapshotSeconds": 5.267
+  },
+  "sandboxPreflight": {
+    "program": "/usr/bin/sandbox-exec",
+    "args": ["-p", "(version 1)(allow default)", "/usr/bin/true"],
+    "code": 0,
+    "note": "macOS sandbox-application probe succeeded in the tool environment before launcher integration tests"
+  },
+  "testBuildLiveSmoke": {
+    "code": 0,
+    "seconds": 12.736,
+    "model": "gpt-6.2-sol",
+    "sandbox": "read-only",
+    "ephemeral": true,
+    "apiKeyOverridesRemoved": true,
+    "marker": "FINAL_RUNTIME_TOOL_OK",
+    "executableSha256": "53e9d6bdbd7bc615d3bc19d8cedfded5abba5e4a7a11c7037fdf3e834313b933",
+    "nativeCommandCount": 1,
+    "commandExitCode": 0,
+    "toolOutputVerified": true,
+    "assistantFinalVerified": true,
+    "stdoutSha256": "e80149d4f0ed447263b849ecfbf2a0fc291b9b79a746f5cd844484444f28849f"
+  },
+  "completedAt": "2026-11-19T01:43:53.791Z",
+  "directFinalChecks": [
+    {
+      "name": "public-runner-code-mode",
+      "test": "suite::subagent_notifications::code_mode_agent_message_tests::yielded_code_mode_spawn_preserves_metadata_and_plaintext",
+      "binary": "codex-rs/target/debug/deps/all-cba74837f9371179",
+      "code": 0,
+      "signal": null,
+      "seconds": 2.685,
+      "explicitCompanionOverride": false
+    },
+    {
+      "name": "isolated-user-reviewer",
+      "test": "suite::v2::mcp_server_elicitation::mcp_server_strict_auto_review::tool_reviewer_user",
+      "binary": "codex-rs/target/debug/deps/all-617faebdc1f70bd5",
+      "code": 0,
+      "signal": null,
+      "seconds": 2.751,
+      "explicitCompanionOverride": false
+    }
+  ],
+  "canonicalBuild": {
+    "name": "cli",
+    "program": "cargo",
+    "args": ["build", "--locked", "-p", "codex-cli", "--bin", "codex"],
+    "code": 0
+  },
+  "finalReviewerRecheck": {
+    "cases": 4,
+    "passed": 4,
+    "flaky": 0,
+    "seconds": 27.654
+  },
+  "adoption": {
+    "promotedToDailyRuntime": false,
+    "stableBranchUnchanged": true,
+    "officialCliRetained": true,
+    "fullWorkspaceTestRun": false,
+    "voiceTested": false,
+    "otherPlatformsTested": false,
+    "existingProfileMigrationTested": false
+  },
+  "privateTestLogHashes": {
+    "agent-attribution-integration.log": "0b5c356d457a7c336f6ad5ddd84f0ab85c22f80aa9f66d9101f3c1c812bdb253",
+    "agent-attribution-integration.log.1795052374604.previous": "274d5ae28e918718d4f5a5605d5f218d96679d622bdfecb9d8b1ca2c5cc1813e",
+    "agent-lifecycle-integration.log": "37e053fa897ba59b539ea19db70e32f952dd6cbf86ee4a79b604dafc191920e4",
+    "agent-lifecycle-integration.log.1795051746477.previous": "897120f8585cbff6bbbafe52f32dea3a76631fa591d5dd28f53724462cbd02ff",
+    "agent-lifecycle-integration.log.1795052010630.previous": "c757143fd1e620a15a0c5efb835305b8ca49572d71a20b77a4941207e165c155",
+    "agent-metadata-unit.log": "74436c1f159b65c33b63e691f09f9ef4d01c84721ad1b8849fb4fbd2d2ec56c6",
+    "api-sandbox-unit.log": "f3e5b93a7c1a9310c3844a8c28676fd3b9a38f2e4f2f9e3d7ff3beae62c4d0bc",
+    "appserver-feature-integration.log": "719a8cce76a7b25b8b100205697b9dba766e677af5c919632b16dc4b4c75e2b3",
+    "cli.log": "d037ff3879011d2348d22b46adbf252815960fad7ab6ba7a1aac6909f25c18ad",
+    "cli.log.1795052444891.previous": "27c313b1e439fd79c67a67ca715150ef2b320c5e3222fc3af7a69dfe7da6b7d5",
+    "clippy-final.log": "d6075f9ffa0c7e35db93499cd82d0f700f8a0f2fe1faae6ff6b49e10ff15588e",
+    "clippy.log": "4555eb489409563f956e5c31affa0bea2e32a67fcd3d3ec00aeb535c94cf584d",
+    "core-feature-integration.log": "494aeb393266cb8075e5574e1aca360424d9ce66df554ba2e7469f2492f8f848",
+    "core-regressions.log": "d480324e65782fb506437bf88bdcee520bf5cb949abd99b34e40e3b9c6279d32",
+    "direct-final-worker.log": "36166650bb7eec31cb722d79958049fc7cf9db4fe12a3ea90e3a3937c71f8565",
+    "experimental-schema.log": "71267b1d1147fd29b68e0cedfdc76ffd39094a193303bda06b74f9cf66e091f3",
+    "experimental-schema.log.1795038297820.previous": "8250b1ca4123f809a8ac95871490ea0913fecae2b11ddcf597f979a4852a32b4",
+    "final-cli-smoke-worker.log": "43175ee913ae41f1c21bf58976d709100febabc1d82cac203e4861ed433cc2e6",
+    "isolated-command_center_new_checkout_and_worktree_preserve_source_and_default_branch.log": "83433c2b237fdafcd4f7818ea2181983294df6212f38f59685ac00c58c5b2e1c",
+    "isolated-command_center_new_preserves_explicit_choices_and_managed_defaults.log": "d5d7036b89733cc89fd10085d4dbe13f0fbb1efd7bd27de10d70dcffd6525593",
+    "isolated-command_center_new_reads_server_defaults_for_actual_destination.log": "7e0afcb927feaf7c5b182ab057448e369a4bc3f2e2088a1363584ecd5c9f06c5",
+    "isolated-command_center_read_only_open_requests_and_failure_preservation.log": "dc65aacdbbbae61ed8ff73249dadf1c297b86efbbf1e81e9356b5bd3f8e482ee",
+    "isolated-user-reviewer.log": "5d7939780f23bea8ed22a80ed75ac49494f11de8657dc3ee1f355765fa535b56",
+    "model-catalogs.log": "4b26d251aad395a47217f83d09bf3db4d5577bf9015848f95ae3e88c192b7e5c",
+    "model-worker.log": "b4a8ea7a576e0e75c7abd8369f978270efacfabc85a50a4cbb288937f03feb87",
+    "protocol-config-connectors.log": "5c4bdd9f737ed6e203e213f54111c69392c1a3888e71f645445b4c81ee3ab7e8",
+    "protocol-config-connectors.log.1795038417025.previous": "54cd5d890e7f1f6b2a10c1c5eb4ebcf56262519c100dc0401c635de4d9b174e1",
+    "public-runner-code-mode.log": "9cc0535f06df158369c3ab49445846e1138d5738df901418c2f8cc50389ea1fc",
+    "sandbox-launcher-integration.log": "8e26b5d3585545c33c1f46f9a23d08d4d90536da63a7af937384e8380443f386",
+    "sdk-contracts.log": "22afb7f634ac24f9be0166e5ad65bbcd2e03c8063bcc59379f2ba83f4c17a6a5",
+    "sdk-contracts.log.1795051039980.previous": "b5d045e251842678a0769ba671a7387f52e643ca25f37dfbacaceb53f6e888a0",
+    "slow-tui-worker.log": "9004512513567a62ac9e9e04c30e60d208932b32522365da78e2be9476243551",
+    "stable-schema.log": "2554f363f4ffbf97f848f4b680e502ea6bf0f4d3be2893324ae8b8f767c70b1a",
+    "stable-schema.log.1795038154888.previous": "41301e221bdfa087bf8a9097ff4cd9fd3fa745c72688c714012ae93b6775df27",
+    "supplemental-worker.log": "05dcdeb1992bfd619c0e5f81748531f9690d9746ed1c8e6cfbad4dc07e10585d",
+    "tui-regressions.log": "a3fe8f41ee1efd65a91e7f59186c803063729df53db9a6360d461e80204975fe",
+    "tui-regressions.log.1795043607211.previous": "4382ac201faa7b1674533846ec405cb8432ee12adfe225550170aed4faa87ca2",
+    "tui-regressions.log.1795044787362.previous": "4966beff25fd37f64b4b0c587b06538b390ac6e99e2fdfdf909dc9a5feadbf2f",
+    "tui-regressions.log.1795045151438.previous": "6aaf586e7e6c5d51b53c8cb349b64873ccd2444dbb387a6a403816ff9c9c31f6",
+    "tui-sidebar-stack32.log": "ef73ad6c2b68c56787d3ade3a216ad3523ecde24c59f8b36a3d4cdc38c8f49dc",
+    "tui-thread-link-isolated.log": "f5cfcac0b419ea8adc38373aa202218470ca3cbcce7f3e736f55230498b1eeff",
+    "tui-upstream-features.log": "b5afe2842158bb24933383ca00f77215774f4d2be72773d0af9de4dc3e11958c",
+    "tui-upstream-features.log.1795049075670.previous": "44b740f3ed0801e1c27c4258127bd19530f698561e4492021f57625b6fe24876",
+    "tui-upstream-features.log.1795049221703.previous": "086796993a4086869d44b7f48a3dce2744cbe19f0412457fafc3cd775d373e59",
+    "worker-extra.log": "3501ff9fb8d3f894c774a796aa728dc393c8d4d9e71b5156b63b03fb155a290a",
+    "worker.log": "f59267ddbe4c3f75a8e7dcc48ccf1f7fc021f828171099a2d5aa38fdb5b0bfe7"
+  },
+  "sourceHashes": {
+    "codex-rs/.config/nextest.toml": "1ed75cd97406f794e6a4a0241d2d9ee929d925eb2776363208313b4f3a65ef72",
+    "codex-rs/Cargo.lock": "62836dfd2e9461c76f7dce5091c19a425b707c04faf4f539688e65139fca11e4",
+    "codex-rs/Cargo.toml": "6f22a586260d9ddc70d3acb5d7b25f22366c35df7dcbc274d6cd32adad9b24f6",
+    "codex-rs/analytics/src/tests/suite/turns/events_tests.rs": "e7ac0d09df3dc7997c608dfa17ae0cd0f8795ba4379b262d070f2f87479ef92b",
+    "codex-rs/app-server-protocol/schema/json/ServerNotification.json": "4725e35c99049b798d159b64d24f7ac1693d6ac495b7cae687c6b8d0008ab390",
+    "codex-rs/app-server-protocol/schema/json/codex_app_server_protocol.schemas.json": "79ed1cbb42edbd6b46999e6eb7d9a9355cc1c925e0c8c1a0a9d276fbc48f12a7",
+    "codex-rs/app-server-protocol/schema/json/codex_app_server_protocol.v2.schemas.json": "d5f4508921b11167b94a07454c6a729e26aff76d236b219d32f2c5bfe87c1a26",
+    "codex-rs/app-server-protocol/schema/json/v2/ItemCompletedNotification.json": "23006e3747f9b14a57950c3ba60aa6fb95161ff187291545ef62880df27ca241",
+    "codex-rs/app-server-protocol/schema/json/v2/ItemStartedNotification.json": "8e59f439bb8006a93d8fab726c5c863f92095489a5e75bf05f7c4702373bff28",
+    "codex-rs/app-server-protocol/schema/json/v2/ReviewStartResponse.json": "3b1c246e792f15a256952cdb925020eafdeb1584793c03f8a431f54fea496061",
+    "codex-rs/app-server-protocol/schema/json/v2/ThreadForkResponse.json": "5852cea80f6d6781bb35c1d554c7978cc5cff2ecbbd64450dadc24d55846dd5a",
+    "codex-rs/app-server-protocol/schema/json/v2/ThreadItemsListResponse.json": "d52a0538b0e8a2bdf5dc319d7ebc8797e506daf19b6c43857271979338fe08fe",
+    "codex-rs/app-server-protocol/schema/json/v2/ThreadListResponse.json": "08d219ab02115f2b747ac7a549b9edfa8f692218dfd212b72ecf38a854ea9e74",
+    "codex-rs/app-server-protocol/schema/json/v2/ThreadMetadataUpdateResponse.json": "6fcbddca17f13ad57433f5d6381805b5243273b5eadffe1ceda3144b2c119b1d",
+    "codex-rs/app-server-protocol/schema/json/v2/ThreadReadResponse.json": "afc01a5a1b086da3734925ac10e01a1bd2735c50d45c01fd096d2c0899da501b",
+    "codex-rs/app-server-protocol/schema/json/v2/ThreadResumeResponse.json": "cc8077f4afb7198005e21ee592657cd18fd8fe6848ee032505a658a1a343ab7d",
+    "codex-rs/app-server-protocol/schema/json/v2/ThreadRevertResponse.json": "e8b323ebf3c71cfac00007cab72f272428445f0bb2799bbc31a56214231a2f42",
+    "codex-rs/app-server-protocol/schema/json/v2/ThreadSearchPartialNotification.json": "739a45b108ab35a18b6765a5d635beb1df2b6c521d0f5325acc302dde86f517f",
+    "codex-rs/app-server-protocol/schema/json/v2/ThreadStartResponse.json": "842c7d06bd4118f6678c4e47b8e06ce111afe12054bcd4e0e8b466fd2989cf36",
+    "codex-rs/app-server-protocol/schema/json/v2/ThreadStartedNotification.json": "94533ec6e0106bc1b1534bd45860ed32ed8ea986de0f8c0ed7e923bb2d80479d",
+    "codex-rs/app-server-protocol/schema/json/v2/ThreadTurnsListResponse.json": "a045ca55b637cfa4eba1409c1f613901a6801da5f9a7741fe069486440f2d7fe",
+    "codex-rs/app-server-protocol/schema/json/v2/ThreadUnarchiveResponse.json": "701a897a0cf2000eb30f05cd5c9d2ea72eae5b5193e48960d05c0d70de1f02d2",
+    "codex-rs/app-server-protocol/schema/json/v2/TurnCompletedNotification.json": "b462d25bb727f70a7a87034e1e4d545532a5cacc07182d0b1d447746b835dc67",
+    "codex-rs/app-server-protocol/schema/json/v2/TurnStartResponse.json": "c4252f8cc8df5716ac625d009a8cd9942083b4763c48e1778a86ea08774c0a1e",
+    "codex-rs/app-server-protocol/schema/json/v2/TurnStartedNotification.json": "afb9ffedd0d6da93ac2a69ee539f5219f94456fc02250c2c475ce49ddeca3d77",
+    "codex-rs/app-server-protocol/schema/precomputed/app-server-exports-experimental.json.zst": "50600af85a4c7732a18ddb84b2af530535f4899ec9120975ae8efc17737f8d83",
+    "codex-rs/app-server-protocol/schema/precomputed/app-server-exports-stable.json.zst": "2fecaa3c285b7776321cdea33b406fbeeac2147e6bcbefcee7d3d51cb2fd47c6",
+    "codex-rs/app-server-protocol/schema/typescript/v2/ThreadItem.ts": "22881ec15a14dcb92778e3d5ccb08fd9d8ffe90b61becdb732ec3b97f02c2dda",
+    "codex-rs/app-server-protocol/src/protocol/event_mapping.rs": "acb9f355e215da5ecbffef0ef0e540d3b1724390021a7849fcc6745745cc84b5",
+    "codex-rs/app-server-protocol/src/protocol/thread_history.rs": "2f3d7cda12db707e71844d7312f5365d5d229a9b104e3eb97340c0547442f2a6",
+    "codex-rs/app-server-protocol/src/protocol/v2/item.rs": "1bfaca2b46c13860fbb7776068af52ae6f700df7c956cd93f14ab230c0ccac86",
+    "codex-rs/app-server-protocol/src/protocol/v2/tests.rs": "644ccc7c174378366c4234fff7bcfa7231046f2667f567965873df536717a302",
+    "codex-rs/app-server/src/bespoke_event_handling.rs": "2f155e5061c47513f60c225c1ee64e259799af2b84a1226120ed9dc54e68cdd5",
+    "codex-rs/core/src/agent/control/completion.rs": "9b2d2a7a4cddc924c5c17a0063c127754a5a7661294ea6a6bc65dd25a4f15548",
+    "codex-rs/core/src/realtime_history_tests.rs": "688b9812dd89163e3c67353f46024d2ac87d73bba6cae026a9ae01ac6f87a223",
+    "codex-rs/core/src/session/tests.rs": "ebf24886b437ae9dc5275aa3706a94e91a31d930b6393076b49916b2856a916d",
+    "codex-rs/core/src/tools/handlers/multi_agents_spec_tests.rs": "f59389b76bc3f240f02dfe059a55467297b298f2921109ebf435a334cd4f14f0",
+    "codex-rs/core/src/tools/handlers/multi_agents_v2.rs": "783bf4c101d70b34dd4b07218469d0f2e01ca1560e10bc3135523885c9bfae6c",
+    "codex-rs/core/src/tools/handlers/multi_agents_v2/assignment.rs": "6927d8d984f2596e0a7d20008425f3f1e4c1ceedfaa9b256fca9a9c3dc0ffa56",
+    "codex-rs/core/src/tools/handlers/multi_agents_v2/interrupt_agent.rs": "348e92202fb2b5e0b00e8157791bb683ddbea4f8f30bfd399fd807cd0195fbe9",
+    "codex-rs/core/src/tools/handlers/multi_agents_v2/message_tool.rs": "1a82379cb12645ecfd580b7ce643e713dd34f005d124943beb2d8289f4b6f981",
+    "codex-rs/core/src/tools/handlers/multi_agents_v2/spawn.rs": "e0b17587f9f77fe58a1d8e308fea9f4faef56d2cd6b1e48984b82160dc63f80a",
+    "codex-rs/core/src/tools/spec_plan.rs": "aad1e7420ef00d90214b3e3bf3c71b4f016dcc211c03b3ba724390819af8800f",
+    "codex-rs/core/src/tools/spec_plan_tests.rs": "96bab9857cdeae3f6dd8af92c61e3de90bb2e79bec8fee3e07c55ef75f48d89d",
+    "codex-rs/core/tests/suite/code_mode_agent_message_tests.rs": "8707c278469de3263f142b8039912eb3bd2dd0cae1ffb6e2b7a9693da850c1d2",
+    "codex-rs/core/tests/suite/subagent_notifications.rs": "2c51f9bc44423449c1f85225bb723bded559e14ce1b12cfa27c870a52240306d",
+    "codex-rs/protocol/src/items.rs": "a3e55113796e54144c8e1ea1875c339b4c74c8fd66fdf32dae5256180cd6c149",
+    "codex-rs/protocol/src/legacy_events.rs": "30d3dd441f15b60dd8d94edff1d97977f5262a226cbc33bbc7f334025c1dead9",
+    "codex-rs/protocol/src/protocol.rs": "3618d1a929609062bf15cd349709bf92875ba0682be5cbce51b02e5c80d3013c",
+    "codex-rs/rollout-trace/src/protocol_event_tests.rs": "a8173fe5451ec89b07876beff49d5a206a636a0df41fa501a8bab8f11f6f955b",
+    "codex-rs/thread-store/src/local/rollout_migration/legacy_event.rs": "81b04a811d6734d23b338a361042d8ae7ce22cad1b41f29e6ab18452cd13b5de",
+    "codex-rs/tui/src/app.rs": "32d22f566ed6de525383fd7cac7b935e8992f46b757d11287cb1b9089981a1fb",
+    "codex-rs/tui/src/app/agent_navigation.rs": "1bbdd28b09df66477ed563cbfa082c9f48e7b35ce7764745e4da7bd75cb06923",
+    "codex-rs/tui/src/app/agent_panel.rs": "ff99c8d24aa21f3ef888f12aa328e88d778e8a92db40fb9bc917df734c333fa0",
+    "codex-rs/tui/src/app/agent_picker.rs": "3cfe5aa06ce5f731c7f8419e1f61f02617ae94af3686154f621a9136f737c932",
+    "codex-rs/tui/src/app/app_server_events.rs": "05efc773dc5b2f579faf14524db5cb8114835757caea988503cabbf1e66e3afe",
+    "codex-rs/tui/src/app/event_dispatch.rs": "51a8f2660d0ba8e1a3e9ef3b49b5b44ec85b04ee969e7e36e626b486f6cad281",
+    "codex-rs/tui/src/app/input.rs": "80e5bad51f6e5ef82f37707d4439ab06138e1355e429fd1fd4c4a4e1cac0864e",
+    "codex-rs/tui/src/app/session_lifecycle.rs": "e374fb3b586daee3aa895318239ce895ec396bad8779a1c5a97cbe1892ee2dfe",
+    "codex-rs/tui/src/app/sidebar_agent_status_tests.rs": "369e86f5efcff93193a34eecd934af7801c53f3600cbeacc1605fd8bcf583513",
+    "codex-rs/tui/src/app/tests.rs": "b3567477b7ba02699e615fdaee9a42ed0e67ef5968c88e1f847d45e5885d7693",
+    "codex-rs/tui/src/app/tests/agent_panel_tests.rs": "24ab9a99313b3f4a29ab0cafa1e36f825cf5537ea48c2f01a8b6b64e29a1ed0a",
+    "codex-rs/tui/src/app/tests/navigation_reconnect_tests.rs": "6420c28314caac5886a8777b78021464e20fc79373936313a54f94a524cbbb59",
+    "codex-rs/tui/src/app/thread_routing.rs": "d1cf56a0eb743c528aad4f0326bee1ff9d50bf347e7b2243fbe94e83d14fc3ec",
+    "codex-rs/tui/src/app_event.rs": "651d4bc9cc87f1fc9a78da87e9808801544cd7b87c9bb295098c0a5d1c5be350",
+    "codex-rs/tui/src/bottom_pane/chat_composer.rs": "1800db80812c4ad933a35a7c36b29249a90e37c4d218a648dd8ce7a69b3952aa",
+    "codex-rs/tui/src/bottom_pane/chat_composer/agents_navigation.rs": "20402a33339d56fb3e8d6d2cabcb7efb7f5882cfb82b633fb6404ff816545d4a",
+    "codex-rs/tui/src/bottom_pane/chat_composer/agents_navigation_tests.rs": "10230bb9f1682b310caca93974ff5a915ece37ad5a29dde456c75940d297e768",
+    "codex-rs/tui/src/bottom_pane/mod.rs": "baa8655a0f743146f9404ba962c6a704cb77859aadba7d8bb3b896c8f1ec3e88",
+    "codex-rs/tui/src/bottom_pane/subagent_panel.rs": "333d40949330cb6cead6df77b7f057987128b5e01461caf73d1ad193587d0724",
+    "codex-rs/tui/src/bottom_pane/tests/subagent_panel_navigation_tests.rs": "ec7a15d2fcda236eb2cc3cba87d1a7149e6c5acb4e3e22b61e3e4b2fa4e788e6",
+    "codex-rs/tui/src/chatwidget.rs": "6d36e53fc676d14b409f1e6822a9472df468677e4582989a92dde7ae872d688f",
+    "codex-rs/tui/src/chatwidget/slash_dispatch.rs": "adf4d24584789f9909d30ff1f86b7f67c47cf46c9ca9cd9c2bdf08cce5cdafbb",
+    "codex-rs/tui/src/chatwidget/tests/app_server.rs": "e1a517e015a1e85b7cc766a968fa80ae852d45cc93693be3a482d6cbbb098075",
+    "codex-rs/tui/src/chatwidget/tests/helpers.rs": "149795afd2f2b86b212709e70b31757638c3d08fd0d35eda9c3d8841d8803f14",
+    "codex-rs/tui/src/chatwidget/tests/slash_commands.rs": "8a28e0e163ae329ef6fd0e6da5385c81cc9ea08650de55843e85a7e5744c6d84",
+    "codex-rs/tui/src/chatwidget/tests/subagent_activity_tests.rs": "987a0c8bb9a113c810a64ff34609cdd529a1d78ae9157a578cbd27bccf2496e6",
+    "codex-rs/tui/src/multi_agents.rs": "ca84fa9c8015fec830575ab2269340777be5e4d7eb9c53d9c362de7f2c764c8a",
+    "codex-rs/tui/src/slash_command.rs": "c9c1d1343eb4a0204fdbd99f7290ddafed34d57c9f3672d08a6549ab5806e8d3",
+    "codex-rs/tui/src/thread_transcript/other_items_tests.rs": "d465094f652d62d035bff1f8b3a7c364310c0c750fa8bc68f6c907a9542ccd97",
+    "codex-rs/tui/src/transcript_view/input_tests.rs": "d46ebf74638504407fb906bf2a7ceda12102359979ec2199ded9eb166f8befaf",
+    "runtime/companion-manifest.json": "d353d1524bceb6e63c72a50c4442e774d496d5259157d143dbf2f4217603dc6e",
+    "scripts/evaluate-subagent-panel.mjs": "ce6b361e73c51a0b75075a2d6335f0bc32956e0a9848a9e19027a87031edd121",
+    "scripts/prepare-agent-ui-runtime.mjs": "ae3abd14f49b464f0e4ece6b12c41a28adebc77973b069753596310419626311",
+    "scripts/subagent-panel-test-runner.mjs": "46d1eb9df68bba263730cdaedca49f3cba1392d9f3369703d93ae3cfd2e0707a",
+    "scripts/tests/prepare-agent-ui-runtime.test.mjs": "dc17083586078401ff6894911223e6b4ce97261e0a7d7a8fca7682bfd2596cfb",
+    "sdk/python/src/openai_codex/generated/v2_all.py": "7aad5828468609c87c6efd22aecb3ac6f80dbaad5ff733dd43170168063a07cd"
   }
 }

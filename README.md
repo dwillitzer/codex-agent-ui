@@ -1,6 +1,7 @@
 > **Agent UI fork:** This branch adds a parent-scoped subagent panel with status filters,
 > transcript navigation, assignment summaries, and per-agent model/context display.
-> Version `0.170.0-agent-ui.2` integrates upstream through `333ea31947` and is under qualification.
+> Version `0.170.0-agent-ui.2` integrates upstream through `333ea31947` and passed selected
+> Intel macOS qualification as a trial candidate.
 > See the [fork build guide](docs/DEVELOPER.md), [maintenance and adoption notes](docs/upstream-maintenance.md),
 > and [recorded walkthrough](docs/subagent-panel-visual-walkthrough.md).
 > The installation commands below install official Codex; build this fork using the fork guide.

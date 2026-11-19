@@ -29,12 +29,12 @@ The script pins the official npm artifact and extracted helper hashes, caches th
 places a symlink beside the debug CLI. Use `--target-dir codex-rs/target/release` for a release
 build, `--cache-dir PATH` for an alternate cache, and `--replace` to replace a different symlink.
 It refuses to overwrite a different regular helper file. Only Darwin x64 has a recipe at present;
-candidate runtime qualification is still in progress. Voice assets are not prepared by this script.
+selected Intel macOS runtime qualification passed. Voice assets are not prepared by this script.
 
 The earlier Intel demonstration used
 the compatible signed host from the installed ChatGPT application because its pinned V8
 source-build artifact was unavailable; that host is not redistributed by this fork. The public
-recipe is intended to remove the installed-app dependency after qualification; a standalone
+recipe removes the installed-app dependency for the qualified coding workflows; a standalone
 source-built host is still a separate build target and has not been revalidated in this increment.
 
 ## Model troubleshooting
@@ -51,12 +51,17 @@ at their original version and hashes; add a new record for a newly built executa
 
 The [model-catalog evaluation](model-catalog-build-identity.md) records the earlier `.1` build's
 211 selected tests and subscription-backed GPT-6.1 Sol/GPT-6.2 Sol tool calls.
-The `.2` candidate requires its own [qualification gates](upstream-maintenance.md).
+The `.2` candidate has its own [qualification record and adoption gates](upstream-maintenance.md).
 
 The `scripts/subagent-panel-test-runner.mjs` Cargo runner isolates test HOME and defaults
 to a 32 MiB test-thread stack for large debug navigation futures. It does not alter the
 shipped runtime stack. Use the `local` nextest profile: its exact nine-scenario thread-link
 case has a three-minute limit after an isolated Intel run passed in about 75 seconds.
+Four multi-scenario command-center startup cases run serially in that local profile after
+isolated runs passed in 22-56 seconds; their assertions and 60-second limit are unchanged.
+The local tool-reviewer fixture also reserves the test pool after parallel startup produced
+retries while its isolated run passed. The runner exposes an installed companion beside the
+Cargo output directory through `CARGO_BIN_EXE_codex-code-mode-host`, preserving explicit overrides.
 
 ## References and version history
 

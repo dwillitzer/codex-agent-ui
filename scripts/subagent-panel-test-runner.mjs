@@ -2,19 +2,32 @@
 // Cargo execution wrapper: preserve Cargo's test cwd/env and isolate runtime home discovery.
 // The compiler and Cargo caches run outside this wrapper with their normal environment.
 import { spawn } from "node:child_process";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 
 const [binary, ...args] = process.argv.slice(2);
 if (!binary) throw new Error("Expected a Cargo test executable");
 const fixtureHome = mkdtempSync(join(tmpdir(), "codex-agent-ui-test-home-"));
+const binaryDir = dirname(resolve(binary));
+const helperDir =
+  basename(binaryDir) === "deps" ? dirname(binaryDir) : binaryDir;
+const helper = join(helperDir, "codex-code-mode-host");
+// Downloaded companions are not Cargo binary targets. Give fixtures the same verified
+// sidecar as the CLI, while preserving explicit Cargo/Bazel host overrides.
+const companionEnv =
+  process.env["CARGO_BIN_EXE_codex-code-mode-host"] === undefined &&
+  process.env.CARGO_BIN_EXE_codex_code_mode_host === undefined &&
+  statSync(helper, { throwIfNoEntry: false })?.isFile()
+    ? { "CARGO_BIN_EXE_codex-code-mode-host": helper }
+    : {};
 // Nextest parses stdout during --list; wrapper diagnostics belong on stderr.
 console.error(`Isolated test-process home: ${fixtureHome}`);
 const child = spawn(binary, args, {
   stdio: "inherit",
   env: {
     ...process.env,
+    ...companionEnv,
     HOME: fixtureHome,
     ...(process.platform === "win32" ? { USERPROFILE: fixtureHome } : {}),
     // Real-server navigation fixtures contain large debug-only async state machines.

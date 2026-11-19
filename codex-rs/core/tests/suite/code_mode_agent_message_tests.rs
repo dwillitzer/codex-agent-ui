@@ -160,6 +160,22 @@ text(await tools.collaboration__spawn_agent({{task_name: "worker", message: "Sum
         matches!(event, EventMsg::TurnComplete(_))
     })
     .await;
+    if created.is_empty() {
+        for request in server.received_requests().await.unwrap_or_default() {
+            if let Ok(body) = request.body_json::<Value>()
+                && let Some(input) = body.get("input").and_then(Value::as_array)
+            {
+                for item in input {
+                    if item["type"]
+                        .as_str()
+                        .is_some_and(|kind| kind.ends_with("call_output"))
+                    {
+                        eprintln!("Code-mode spawn diagnostic: {item}");
+                    }
+                }
+            }
+        }
+    }
     let child_id = created.try_recv()?;
     let child = test.thread_manager.get_thread(child_id).await?;
     wait_for_event(&child, |event| matches!(event, EventMsg::TurnComplete(_))).await;
